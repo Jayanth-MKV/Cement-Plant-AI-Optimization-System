@@ -10,6 +10,15 @@ from .optimization_tools import (
     PlantKPIDashboard,
     MaintenanceCalculator,
 )
+from app.core.tables import (
+    RAW_MATERIAL_FEED,
+    GRINDING_OPERATIONS,
+    KILN_OPERATIONS,
+    UTILITIES_MONITORING,
+    QUALITY_CONTROL,
+    AI_RECOMMENDATIONS,
+    OPTIMIZATION_RESULTS,
+)
 
 logger = logging.getLogger("app.scheduler")
 
@@ -28,9 +37,9 @@ class CementPlantScheduler:
         start_ts = datetime.now()
         try:
             logger.info(f"[realtime] Run started at {start_ts.isoformat()}")
-            latest_raw_material = await self.db.get_latest("raw_material_feed")
-            latest_grinding = await self.db.get_latest("grinding_operations")
-            latest_kiln = await self.db.get_latest("kiln_operations")
+            latest_raw_material = await self.db.get_latest(RAW_MATERIAL_FEED)
+            latest_grinding = await self.db.get_latest(GRINDING_OPERATIONS)
+            latest_kiln = await self.db.get_latest(KILN_OPERATIONS)
 
             logger.debug(f"[realtime] raw_material: {bool(latest_raw_material)} grinding: {bool(latest_grinding)} kiln: {bool(latest_kiln)}")
 
@@ -63,7 +72,7 @@ class CementPlantScheduler:
             if alerts:
                 logger.info(f"[realtime] Inserting {len(alerts)} alert(s)")
             for alert in alerts:
-                inserted = await self.db.insert("ai_recommendations", alert)
+                inserted = await self.db.insert(AI_RECOMMENDATIONS, alert)
                 logger.debug(f"[realtime] Inserted alert id={inserted.get('id') if inserted else None}")
 
             await self._broadcast_plant_update()
@@ -83,7 +92,7 @@ class CementPlantScheduler:
                     "created_at": datetime.now().isoformat(),
                     "action_taken": False,
                 }
-                await self.db.insert("ai_recommendations", recommendation)
+                await self.db.insert(AI_RECOMMENDATIONS, recommendation)
 
             optimization_record = {
                 "created_at": datetime.now().isoformat(),
@@ -92,7 +101,7 @@ class CementPlantScheduler:
                 "co2_reduced_kg": kpi_result["energy_savings"].get("co2_reduced_kg", 0),
                 "model_confidence": 0.92,
             }
-            await self.db.insert("optimization_results", optimization_record)
+            await self.db.insert(OPTIMIZATION_RESULTS, optimization_record)
 
             await self.websocket_manager.broadcast(json.dumps({"type": "optimization", "data": kpi_result}))
         except Exception:
@@ -101,7 +110,7 @@ class CementPlantScheduler:
     async def check_equipment_health(self):
         try:
             logger.info(f"Equipment health check at {datetime.now()}")
-            equipment_data = await self.db.get_recent("utilities_monitoring", where={}, limit=20)
+            equipment_data = await self.db.get_recent(UTILITIES_MONITORING, where={}, limit=20)
             for equipment in equipment_data:
                 pass  # Extend with health logic
         except Exception:
@@ -115,10 +124,10 @@ class CementPlantScheduler:
 
     async def _get_plant_data_summary(self):
         try:
-            raw_material = await self.db.get_latest("raw_material_feed")
-            grinding = await self.db.get_latest("grinding_operations")
-            kiln = await self.db.get_latest("kiln_operations")
-            quality = await self.db.get_latest("quality_control")
+            raw_material = await self.db.get_latest(RAW_MATERIAL_FEED)
+            grinding = await self.db.get_latest(GRINDING_OPERATIONS)
+            kiln = await self.db.get_latest(KILN_OPERATIONS)
+            quality = await self.db.get_latest(QUALITY_CONTROL)
             overview = {}
             if grinding:
                 power = grinding.get("power_consumption_kw", 2000)

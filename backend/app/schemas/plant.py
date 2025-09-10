@@ -56,7 +56,7 @@ class KilnOperations(BaseModel):
 
 class AIRecommendation(BaseModel):
     id: Optional[int] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=datetime.now, description="Creation timestamp (aligned with DB column)")
     process_area: str
     recommendation_type: str
     priority_level: int
@@ -64,6 +64,44 @@ class AIRecommendation(BaseModel):
     estimated_savings_kwh: float
     estimated_savings_cost: float
     action_taken: bool = False
+
+
+class QualityControl(BaseModel):
+    """Minimal quality control lab result schema.
+
+    Extended fields can be added once the upstream ingestion provides them.
+    """
+
+    id: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    ai_quality_score: float = Field(..., description="Model-assigned quality score (0-100)")
+
+
+class AlternativeFuelRecord(BaseModel):
+    id: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    fuel_type: str = Field(..., description="Fuel descriptor (e.g. biomass, rdf, tire)")
+    heating_value_mjkg: float = Field(..., description="Higher heating value in MJ/kg")
+    consumption_rate_tph: float = Field(..., description="Consumption rate (tph)")
+    moisture_pct: float = Field(..., description="Moisture percentage")
+
+
+class UtilitiesMonitoringRecord(BaseModel):
+    id: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    equipment_name: str
+    power_kw: float
+    efficiency_pct: float
+    status: str = Field(..., description="Operational status (e.g. running, standby, fault)")
+
+
+class OptimizationResult(BaseModel):
+    id: Optional[int] = None
+    created_at: datetime = Field(default_factory=datetime.now)
+    energy_saved_kwh: float
+    cost_saved_usd: float
+    co2_reduced_kg: float
+    model_confidence: float
 
 
 class OptimizationRequest(BaseModel):

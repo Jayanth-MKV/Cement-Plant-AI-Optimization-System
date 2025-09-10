@@ -4,6 +4,15 @@ from datetime import datetime
 import logging
 
 from app.core.dependencies import get_supabase
+from app.core.tables import (
+    GRINDING_OPERATIONS,
+    KILN_OPERATIONS,
+    QUALITY_CONTROL,
+    OPTIMIZATION_RESULTS,
+    RAW_MATERIAL_FEED,
+    ALTERNATIVE_FUELS,
+    UTILITIES_MONITORING,
+)
 from app.services.database import SupabaseManager
 from app.schemas.plant import PlantOverview
 
@@ -15,42 +24,32 @@ router = APIRouter(prefix="/data", tags=["Plant Data"])
 @router.get("/plant-overview", response_model=PlantOverview)
 async def get_plant_overview(db: SupabaseManager = Depends(get_supabase)):
     try:
-        latest_grinding = await db.get_latest("grinding_operations")
-        latest_kiln = await db.get_latest("kiln_operations")
-        latest_quality = await db.get_latest("quality_control")
-        latest_optimization = await db.get_latest("optimization_results")
+        latest_grinding = await db.get_latest(GRINDING_OPERATIONS)
+        latest_kiln = await db.get_latest(KILN_OPERATIONS)
+        latest_quality = await db.get_latest(QUALITY_CONTROL)
+        latest_optimization = await db.get_latest(OPTIMIZATION_RESULTS)
         energy_consumption = latest_grinding.get("power_consumption_kw", 2450) if latest_grinding else 2450
         quality_score = latest_quality.get("ai_quality_score", 94) if latest_quality else 94
         cost_savings = latest_optimization.get("cost_saved_usd", 125420) if latest_optimization else 125420
         co2_reduction = latest_optimization.get("co2_reduced_kg", 8750) if latest_optimization else 8750
-        # Base overall efficiency derived from grinding specific energy consumption (SEC)
         if latest_grinding:
             feed_rate = latest_grinding.get("total_feed_rate_tph", 80) or 80
             sec = energy_consumption / feed_rate if feed_rate else 0
-            overall_efficiency = 100 - max(0, (sec - 25) * 2)  # penalize above nominal SEC
+            overall_efficiency = 100 - max(0, (sec - 25) * 2)
         else:
-            overall_efficiency = 85  # default baseline
-
-        # Integrate kiln thermal performance using previously unused latest_kiln
-        # Target burning zone temperature ~1450°C. Deviations reduce efficiency modestly.
+            overall_efficiency = 85
         if latest_kiln:
             kiln_temp = latest_kiln.get("burning_zone_temp_c")
             if isinstance(kiln_temp, (int, float)):
                 temp_deviation = abs(kiln_temp - 1450)
-                # Cap penalty to avoid excessive impact; 0.3% per °C over 5°C deviation up to 15%
                 kiln_penalty = 0
                 if temp_deviation > 5:
                     kiln_penalty = min(15, (temp_deviation - 5) * 0.3)
                 overall_efficiency -= kiln_penalty
-
-            # Optional: consider specific heat consumption if available (lower is better ~3.2 MJ/kg clinker)
             shc = latest_kiln.get("specific_heat_consumption_mjkg")
             if isinstance(shc, (int, float)) and shc > 0:
-                # Penalize above 3.3 MJ/kg linearly up to 10%
-                heat_penalty = max(0, min(10, (shc - 3.3) * 8))  # (shc-3.3)*8 => 0.8% per 0.1 MJ/kg
+                heat_penalty = max(0, min(10, (shc - 3.3) * 8))
                 overall_efficiency -= heat_penalty
-
-        # Clamp efficiency range
         overall_efficiency = max(50, min(100, overall_efficiency))
         return PlantOverview(
             energy_consumption_kwh=round(energy_consumption),
@@ -70,7 +69,7 @@ async def get_raw_material_data(
     db: SupabaseManager = Depends(get_supabase),
 ):
     try:
-        return await db.get_recent("raw_material_feed", limit=limit)
+        return await db.get_recent(RAW_MATERIAL_FEED, limit=limit)
     except Exception as e:
         logger.error(f"Error getting raw material data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -82,7 +81,7 @@ async def get_grinding_data(
     db: SupabaseManager = Depends(get_supabase),
 ):
     try:
-        return await db.get_recent("grinding_operations", limit=limit)
+        return await db.get_recent(GRINDING_OPERATIONS, limit=limit)
     except Exception as e:
         logger.error(f"Error getting grinding data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -94,7 +93,7 @@ async def get_kiln_data(
     db: SupabaseManager = Depends(get_supabase),
 ):
     try:
-        return await db.get_recent("kiln_operations", limit=limit)
+        return await db.get_recent(KILN_OPERATIONS, limit=limit)
     except Exception as e:
         logger.error(f"Error getting kiln data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -106,7 +105,7 @@ async def get_quality_data(
     db: SupabaseManager = Depends(get_supabase),
 ):
     try:
-        return await db.get_recent("quality_control", limit=limit)
+        return await db.get_recent(QUALITY_CONTROL, limit=limit)
     except Exception as e:
         logger.error(f"Error getting quality data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -118,7 +117,7 @@ async def get_alternative_fuels_data(
     db: SupabaseManager = Depends(get_supabase),
 ):
     try:
-        return await db.get_recent("alternative_fuels", limit=limit)
+        return await db.get_recent(ALTERNATIVE_FUELS, limit=limit)
     except Exception as e:
         logger.error(f"Error getting alternative fuels data: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -130,7 +129,7 @@ async def get_utilities_data(
     db: SupabaseManager = Depends(get_supabase),
 ):
     try:
-        return await db.get_recent("utilities_monitoring", limit=limit)
+        return await db.get_recent(UTILITIES_MONITORING, limit=limit)
     except Exception as e:
         logger.error(f"Error getting utilities data: {e}")
         raise HTTPException(status_code=500, detail=str(e))

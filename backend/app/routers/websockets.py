@@ -6,6 +6,12 @@ from datetime import datetime
 import logging
 
 from app.core.dependencies import get_supabase
+from app.core.tables import (
+    GRINDING_OPERATIONS,
+    KILN_OPERATIONS,
+    RAW_MATERIAL_FEED,
+    AI_RECOMMENDATIONS,
+)
 from app.services.database import SupabaseManager
 from app.utils.websocket_manager import ConnectionManager
 
@@ -19,8 +25,16 @@ manager = default_manager
 
 
 @router.websocket("/ws/plant-data")
-async def websocket_plant_data(websocket: WebSocket, client_id: Optional[str] = Query(None), db: SupabaseManager = Depends(get_supabase)):
-    client_info = {"client_id": client_id or f"client_{datetime.now().timestamp()}", "connected_at": datetime.now().isoformat(), "subscription": "plant_data"}
+async def websocket_plant_data(
+    websocket: WebSocket,
+    client_id: Optional[str] = Query(None),
+    db: SupabaseManager = Depends(get_supabase),
+):
+    client_info = {
+        "client_id": client_id or f"client_{datetime.now().timestamp()}",
+        "connected_at": datetime.now().isoformat(),
+        "subscription": "plant_data",
+    }
     await manager.connect(websocket, client_info)
     try:
         initial_data = await _get_initial_plant_data(db)
@@ -58,10 +72,10 @@ async def websocket_alerts(websocket: WebSocket, priority_filter: Optional[int] 
 
 async def _get_initial_plant_data(db: SupabaseManager) -> dict:
     try:
-        latest_grinding = await db.get_latest("grinding_operations")
-        latest_kiln = await db.get_latest("kiln_operations")
-        latest_raw_material = await db.get_latest("raw_material_feed")
-        recent_recommendations = await db.get_recent("ai_recommendations", limit=5)
+        latest_grinding = await db.get_latest(GRINDING_OPERATIONS)
+        latest_kiln = await db.get_latest(KILN_OPERATIONS)
+        latest_raw_material = await db.get_latest(RAW_MATERIAL_FEED)
+        recent_recommendations = await db.get_recent(AI_RECOMMENDATIONS, limit=5)
         return {"grinding": latest_grinding, "kiln": latest_kiln, "raw_material": latest_raw_material, "recommendations": recent_recommendations}
     except Exception as e:
         logger.error(f"Error getting initial plant data: {e}")
