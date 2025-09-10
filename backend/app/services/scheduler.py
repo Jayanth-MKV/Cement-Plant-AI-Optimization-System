@@ -4,23 +4,10 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from .optimization_tools import (
-    CementChemistryCalculator,
-    EnergyEfficiencyCalculator,
-    PlantKPIDashboard,
-    MaintenanceCalculator,
-)
-from app.core.tables import (
-    RAW_MATERIAL_FEED,
-    GRINDING_OPERATIONS,
-    KILN_OPERATIONS,
-    UTILITIES_MONITORING,
-    QUALITY_CONTROL,
-    AI_RECOMMENDATIONS,
-    OPTIMIZATION_RESULTS,
-)
+from .optimization_tools import CementChemistryCalculator, EnergyEfficiencyCalculator, PlantKPIDashboard, MaintenanceCalculator
+from app.core.tables import RAW_MATERIAL_FEED, GRINDING_OPERATIONS, KILN_OPERATIONS, UTILITIES_MONITORING, QUALITY_CONTROL, AI_RECOMMENDATIONS, OPTIMIZATION_RESULTS
 
-logger = logging.getLogger("app.scheduler")
+logger = logging.getLogger()
 
 
 class CementPlantScheduler:
