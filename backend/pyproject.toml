@@ -1,0 +1,15 @@
+[project]
+name = "cement-plant-api"
+version = "0.1.0"
+description = "API for cement plant AI optimization with real-time monitoring."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "apscheduler>=3.11.0",
+    "asyncpg>=0.30.0",
+    "fastapi[standard]>=0.116.1",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.1",
+    "python-dotenv>=1.1.1",
+    "supabase>=2.18.1",
+]
