@@ -13,7 +13,7 @@ class PlantOverview(BaseModel):
 
 class RawMaterialData(BaseModel):
     id: Optional[int] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=datetime.now)
     material_type: str
     feed_rate_tph: float
     moisture_pct: float
@@ -25,7 +25,7 @@ class RawMaterialData(BaseModel):
 
 class GrindingOperations(BaseModel):
     id: Optional[int] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=datetime.now)
     mill_id: int
     mill_type: str
     total_feed_rate_tph: float
@@ -39,7 +39,7 @@ class GrindingOperations(BaseModel):
 
 class KilnOperations(BaseModel):
     id: Optional[int] = None
-    timestamp: datetime = Field(default_factory=datetime.now)
+    created_at: datetime = Field(default_factory=datetime.now)
     kiln_id: int
     burning_zone_temp_c: float
     preheater_temp_c: float

@@ -84,4 +84,4 @@ async def _get_initial_plant_data(db: SupabaseManager) -> dict:
 
 @router.get("/ws/status")
 async def websocket_status():
-    return {"active_connections": manager.get_connection_count(), "connection_details": manager.get_connection_info(), "timestamp": datetime.now().isoformat()}
+    return {"active_connections": manager.get_connection_count(), "connection_details": manager.get_connection_info(), "created_at": datetime.now().isoformat()}

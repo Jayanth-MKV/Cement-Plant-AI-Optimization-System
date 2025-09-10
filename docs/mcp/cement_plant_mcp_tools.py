@@ -369,7 +369,7 @@ def detect_process_anomalies(process_type: str, threshold_std: float = 2.0) -> s
                         severity = "high" if z_score > 3.0 else "medium"
                         anomalies.append(
                             {
-                                "timestamp": row["created_at"].isoformat(),
+                                "created_at": row["created_at"].isoformat(),
                                 "parameter": "power_consumption_kw",
                                 "value": row["power_consumption_kw"],
                                 "expected_range": f"{mean_power - 2 * std_power:.1f}-{mean_power + 2 * std_power:.1f}",
@@ -422,7 +422,7 @@ def detect_process_anomalies(process_type: str, threshold_std: float = 2.0) -> s
                             severity = "low"
                         anomalies.append(
                             {
-                                "timestamp": row["created_at"].isoformat(),
+                                "created_at": row["created_at"].isoformat(),
                                 "parameter": "burning_zone_temp_c",
                                 "value": temp_value,
                                 "target": target_temp,
@@ -650,7 +650,7 @@ def manage_alerts(action: str = "list", alert_id: int = None, new_alert: str = N
                 alerts.append(
                     {
                         "id": row[0],
-                        "timestamp": row[1].isoformat(),
+                        "created_at": row[1].isoformat(),
                         "process_area": row[2],
                         "type": row[3],
                         "priority": row[4],

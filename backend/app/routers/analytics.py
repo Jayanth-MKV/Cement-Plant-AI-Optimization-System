@@ -54,7 +54,7 @@ async def generate_plant_report(db: SupabaseManager = Depends(get_supabase)):
 async def chemistry_analysis(db: SupabaseManager = Depends(get_supabase)):
     try:
         raw_material = await db.get_latest("raw_material_feed") or {}
-        return {"analysis": chemistry_calc.analyze_chemistry(raw_material), "timestamp": datetime.utcnow().isoformat()}
+        return {"analysis": chemistry_calc.analyze_chemistry(raw_material), "created_at": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Chemistry analysis error: {e}")
         raise HTTPException(status_code=500, detail="Chemistry analysis failed")
@@ -64,7 +64,7 @@ async def chemistry_analysis(db: SupabaseManager = Depends(get_supabase)):
 async def grinding_efficiency(db: SupabaseManager = Depends(get_supabase)):
     try:
         grinding = await db.get_latest("grinding_operations") or {}
-        return {"efficiency": energy_calc.analyze_grinding_efficiency(grinding), "timestamp": datetime.utcnow().isoformat()}
+        return {"efficiency": energy_calc.analyze_grinding_efficiency(grinding), "created_at": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Grinding efficiency error: {e}")
         raise HTTPException(status_code=500, detail="Grinding efficiency analysis failed")
@@ -74,7 +74,7 @@ async def grinding_efficiency(db: SupabaseManager = Depends(get_supabase)):
 async def fuel_mix(db: SupabaseManager = Depends(get_supabase), target_tsr: float = Query(30, ge=0, le=60)):
     try:
         kiln = await db.get_latest("kiln_operations") or {}
-        return {"optimization": fuel_optimizer.optimize_fuel_mix(kiln, target_tsr=target_tsr), "timestamp": datetime.utcnow().isoformat()}
+        return {"optimization": fuel_optimizer.optimize_fuel_mix(kiln, target_tsr=target_tsr), "created_at": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Fuel optimization error: {e}")
         raise HTTPException(status_code=500, detail="Fuel optimization failed")
@@ -88,7 +88,7 @@ async def overall_equipment_effectiveness(
 ):
     try:
         result = math_tools.calculate_overall_equipment_effectiveness(availability_pct, performance_pct, quality_pct)
-        return {"oee": result.__dict__, "timestamp": datetime.utcnow().isoformat()}
+        return {"oee": result.__dict__, "created_at": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"OEE calculation error: {e}")
         raise HTTPException(status_code=500, detail="OEE calculation failed")
@@ -102,7 +102,7 @@ async def circulating_load(
 ):
     try:
         metric = advanced_calc.calculate_mill_circulating_load(mill_feed_tph, mill_product_tph, separator_efficiency_pct)
-        return {"circulating_load": metric.__dict__, "timestamp": datetime.utcnow().isoformat()}
+        return {"circulating_load": metric.__dict__, "created_at": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Circulating load calc error: {e}")
         raise HTTPException(status_code=500, detail="Circulating load calculation failed")
@@ -117,7 +117,7 @@ async def separator_efficiency(
 ):
     try:
         metric = advanced_calc.calculate_separator_efficiency(coarse_feed_tph, coarse_reject_tph, fine_feed_tph, fine_product_tph)
-        return {"separator_efficiency": metric.__dict__, "timestamp": datetime.utcnow().isoformat()}
+        return {"separator_efficiency": metric.__dict__, "created_at": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Separator efficiency calc error: {e}")
         raise HTTPException(status_code=500, detail="Separator efficiency calculation failed")
@@ -135,5 +135,5 @@ async def analytics_health():
             "cement_math_toolkit.CementMathTools",
             "advanced_math_toolkit.AdvancedCementCalculations",
         ],
-        "timestamp": datetime.utcnow().isoformat(),
+        "created_at": datetime.utcnow().isoformat(),
     }

@@ -153,7 +153,7 @@ async def get_combined_plant_data(db: SupabaseManager = Depends(get_supabase)):
             "quality": quality,
             "alternative_fuels": alternative_fuels,
             "utilities": utilities,
-            "timestamp": datetime.now().isoformat(),
+            "created_at": datetime.now().isoformat(),
         }
     except Exception as e:
         logger.error(f"Error getting combined plant data: {e}")

@@ -281,7 +281,7 @@ class PlantKPIDashboard:
             recommendations = self._generate_recommendations(plant_data, energy_result, chemistry_result, fuel_result)
 
             return {
-                "timestamp": datetime.now().isoformat(),
+                "created_at": datetime.now().isoformat(),
                 "chemistry": chemistry_result,
                 "energy": energy_result,
                 "fuel_optimization": fuel_result,
@@ -292,7 +292,7 @@ class PlantKPIDashboard:
         except Exception as e:
             logger.error(f"KPI report error: {e}")
             return {
-                "timestamp": datetime.now().isoformat(),
+                "created_at": datetime.now().isoformat(),
                 "error": f"kpi_report_failed: {e}",
                 "chemistry": {},
                 "energy": {},

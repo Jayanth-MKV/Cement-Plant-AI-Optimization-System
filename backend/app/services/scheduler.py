@@ -137,15 +137,7 @@ class CementPlantScheduler:
         try:
             plant_data = await self._get_plant_data_summary()
             logger.info(f"Broadcasting plant update: {plant_data}")
-            await self.websocket_manager.broadcast(
-                json.dumps(
-                    {
-                        "type": "plant_update",
-                        "timestamp": datetime.now().isoformat(),
-                        "data": plant_data,
-                    }
-                )
-            )
+            await self.websocket_manager.broadcast(json.dumps({"type": "plant_update", "created_at": datetime.now().isoformat(), "data": plant_data}))
         except Exception:
             logger.exception("Error broadcasting plant update")
 

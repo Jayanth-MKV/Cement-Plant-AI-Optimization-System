@@ -79,7 +79,7 @@ Periodic broadcast (every 15s, type=`plant_update`):
 ```
 {
   "type": "plant_update",
-  "timestamp": "ISO8601",
+  "created_at": "ISO8601",
   "data": {
 	 "raw_material": {...},
 	 "grinding": {...},
@@ -175,8 +175,6 @@ Legacy toolkits replicate similar metrics under `app/tools/*` for backward compa
 6. Resilience:
    - WebSocket reconnect with exponential backoff (e.g., 1s → 2s → 5s → 10s capped).
    - If WS down >30s fallback to polling `/api/data/plant-overview`.
-7. Data Normalization:
-   - Timestamp fields: Most AI-generated rows use `created_at`; ingestion rows may use `timestamp` or `created_at` (unify client by mapping).
 
 ---
 
@@ -217,7 +215,6 @@ python -m uvicorn main:app --reload --port 8000
 | Gap                                            | Impact                | Action                                        |
 | ---------------------------------------------- | --------------------- | --------------------------------------------- |
 | Missing ingestion jobs for raw/periodic tables | Demo data stale       | Implement simulator in `populate_sample_data` |
-| Mixed `timestamp` vs `created_at` fields       | UI normalization cost | Standardize to `created_at`                   |
 | Equipment health logic placeholder             | No utility insights   | Implement scoring & alerts                    |
 | No auth / RBAC                                 | Open endpoints        | Add API key / JWT layer                       |
 | Lack of pagination                             | Heavy queries later   | Add cursor/limit params                       |
