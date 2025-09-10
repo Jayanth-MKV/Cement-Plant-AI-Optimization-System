@@ -13,7 +13,7 @@ mcp = FastMCP("Cement Plant AI Optimizer")
 
 # Database connection helper
 def get_db_connection():
-    return psycopg2.connect(host="localhost", database="cement_plant", user="postgres", password="password")
+    return psycopg2.connect(host="localhost", database="postgres", user="postgres", password="password")
 
 
 @dataclass

@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
+from datetime import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -9,7 +10,7 @@ from app.core.logging_config import setup_logging
 from app.services.database import SupabaseManager
 from app.services.scheduler import setup_scheduler
 from app.utils.websocket_manager import ConnectionManager
-from app.routers import data, ai, websockets
+from app.routers import data, ai, websockets, analytics
 
 setup_logging(settings.debug)
 logger = logging.getLogger(__name__)
@@ -23,7 +24,9 @@ async def lifespan(app: FastAPI):
         await supabase_manager.initialize()
         websocket_manager = ConnectionManager()
         scheduler = AsyncIOScheduler(timezone=settings.scheduler_timezone)
-        plant_scheduler = setup_scheduler(scheduler, supabase_manager, websocket_manager)
+        plant_scheduler = setup_scheduler(
+            scheduler, supabase_manager, websocket_manager
+        )
         scheduler.start()
         app.state.supabase = supabase_manager
         app.state.scheduler = scheduler
@@ -69,6 +72,7 @@ app.add_middleware(
 app.include_router(data.router, prefix="/api")
 app.include_router(ai.router, prefix="/api")
 app.include_router(websockets.router)
+app.include_router(analytics.router, prefix="/api")
 
 
 @app.get("/")
@@ -86,7 +90,7 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "timestamp": "2025-09-11T00:29:00Z",
+        "timestamp": datetime.utcnow().isoformat(),
         "version": "2.0.0",
     }
 
