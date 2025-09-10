@@ -24,9 +24,7 @@ async def lifespan(app: FastAPI):
         await supabase_manager.initialize()
         websocket_manager = ConnectionManager()
         scheduler = AsyncIOScheduler(timezone=settings.scheduler_timezone)
-        plant_scheduler = setup_scheduler(
-            scheduler, supabase_manager, websocket_manager
-        )
+        plant_scheduler = setup_scheduler(scheduler, supabase_manager, websocket_manager)
         scheduler.start()
         app.state.supabase = supabase_manager
         app.state.scheduler = scheduler

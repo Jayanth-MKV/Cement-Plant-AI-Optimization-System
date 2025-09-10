@@ -57,7 +57,8 @@ class CementChemistryCalculator:
             lsf_pct = self._lsf_percent(cao, sio2, al2o3, fe2o3)
             am = self._alumina_modulus(al2o3, fe2o3)
             sm = self._silica_modulus(sio2, al2o3, fe2o3)
-            c3s = self._bogue_c3s(cao, sio2, al2o3, fe2o3)
+            # Clamp negative C3S (can occur with atypical lab values / partial data)
+            c3s = max(0.0, self._bogue_c3s(cao, sio2, al2o3, fe2o3))
 
             # Status (retain old ranges on ratio; new ranges on percent)
             if 0.92 <= lsf_ratio <= 0.98:
@@ -88,8 +89,6 @@ class CementChemistryCalculator:
                     "status": status,
                     "target_range": [0.92, 0.98],
                 },
-                "alumina_modulus": {"value": round(am, 2), "target_range": [1.3, 2.5]},
-                # Extended keys
                 "lsf_pct": {
                     "value": round(lsf_pct, 2),
                     "status": lsf_pct_status,
@@ -100,6 +99,11 @@ class CementChemistryCalculator:
                     "status": sm_status,
                     "target": "2.2-3.2",
                 },
+                "alumina_modulus": {
+                    "value": round(am, 2),
+                    "status": am_status,
+                    "target": "1.25-2.5",
+                },
                 "c3s": {
                     "value": round(c3s, 2),
                     "status": "calculated",
@@ -108,23 +112,29 @@ class CementChemistryCalculator:
                 "recommendations": recommendations,
             }
         except Exception as e:
+            # Provide a clearly flagged error structure instead of plausible default values
             logger.error(f"Chemistry analysis error: {e}")
             return {
+                "error": f"chemistry_calculation_failed: {e}",
                 "lsf": {
-                    "value": 0.95,
-                    "status": "optimal",
+                    "value": None,
+                    "status": "error",
                     "target_range": [0.92, 0.98],
                 },
-                "alumina_modulus": {"value": 1.6, "target_range": [1.3, 2.5]},
-                "lsf_pct": {"value": 95.0, "status": "optimal", "target": "92-98%"},
+                "alumina_modulus": {
+                    "value": None,
+                    "target_range": [1.3, 2.5],
+                    "status": "error",
+                },
+                "lsf_pct": {"value": None, "status": "error", "target": "92-98%"},
                 "silica_modulus": {
-                    "value": 2.6,
-                    "status": "optimal",
+                    "value": None,
+                    "status": "error",
                     "target": "2.2-3.2",
                 },
                 "c3s": {
-                    "value": 60.0,
-                    "status": "calculated",
+                    "value": None,
+                    "status": "error",
                     "target": "50-70% (indicative)",
                 },
                 "recommendations": [],
@@ -182,15 +192,16 @@ class EnergyEfficiencyCalculator:
         except Exception as e:
             logger.error(f"Grinding efficiency analysis error: {e}")
             return {
+                "error": f"grinding_efficiency_failed: {e}",
                 "specific_energy_consumption": {
-                    "value": 28.0,
-                    "status": "acceptable",
-                    "potential_savings_kwh": 240.0,
+                    "value": None,
+                    "status": "error",
+                    "potential_savings_kwh": None,
                     "target": 25,
                 },
-                "efficiency_pct": 85,
-                "optimization_potential_kw": 240.0,
-                "recommendations": ["Fallback static result due to error"],
+                "efficiency_pct": None,
+                "optimization_potential_kw": None,
+                "recommendations": [],
             }
 
 
@@ -242,11 +253,12 @@ class AlternativeFuelOptimizer:
         except Exception as e:
             logger.error(f"Fuel optimization error: {e}")
             return {
-                "current_tsr": 0,
+                "error": f"fuel_optimization_failed: {e}",
+                "current_tsr": None,
                 "target_tsr": target_tsr,
-                "recommended_coal_rate_tph": 0,
-                "recommended_alt_fuel_rate_tph": 0,
-                "co2_reduction_kg_h": 0,
+                "recommended_coal_rate_tph": None,
+                "recommended_alt_fuel_rate_tph": None,
+                "co2_reduction_kg_h": None,
                 "feasibility": "error",
             }
 
@@ -281,10 +293,11 @@ class PlantKPIDashboard:
             logger.error(f"KPI report error: {e}")
             return {
                 "timestamp": datetime.now().isoformat(),
+                "error": f"kpi_report_failed: {e}",
                 "chemistry": {},
                 "energy": {},
                 "fuel_optimization": {},
-                "plant_efficiency_score": 75,
+                "plant_efficiency_score": None,
                 "energy_savings": {},
                 "recommendations": [],
             }
@@ -423,8 +436,9 @@ class MaintenanceCalculator:
         except Exception as e:
             logger.error(f"Maintenance calculation error: {e}")
             return {
-                "health_score": 85.0,
-                "failure_risk": 15.0,
-                "status": "good",
-                "maintenance_required": False,
+                "error": f"maintenance_health_failed: {e}",
+                "health_score": None,
+                "failure_risk": None,
+                "status": "error",
+                "maintenance_required": None,
             }
