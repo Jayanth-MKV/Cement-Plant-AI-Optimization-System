@@ -4,8 +4,21 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from .optimization_tools import CementChemistryCalculator, EnergyEfficiencyCalculator, PlantKPIDashboard, MaintenanceCalculator
-from app.core.tables import RAW_MATERIAL_FEED, GRINDING_OPERATIONS, KILN_OPERATIONS, UTILITIES_MONITORING, QUALITY_CONTROL, AI_RECOMMENDATIONS, OPTIMIZATION_RESULTS
+from .optimization_tools import (
+    CementChemistryCalculator,
+    EnergyEfficiencyCalculator,
+    PlantKPIDashboard,
+    MaintenanceCalculator,
+)
+from app.core.tables import (
+    RAW_MATERIAL_FEED,
+    GRINDING_OPERATIONS,
+    KILN_OPERATIONS,
+    UTILITIES_MONITORING,
+    QUALITY_CONTROL,
+    AI_RECOMMENDATIONS,
+    OPTIMIZATION_RESULTS,
+)
 
 logger = logging.getLogger()
 
@@ -33,26 +46,40 @@ class CementPlantScheduler:
             alerts = []
             if latest_grinding:
                 grinding_result = self.energy_calc.analyze_grinding_efficiency(latest_grinding)
-                logger.info(
-                    "[realtime] Grinding SEC=%.2f status=%s potential_savings_kwh=%.2f",
-                    grinding_result["specific_energy_consumption"]["value"],
-                    grinding_result["specific_energy_consumption"]["status"],
-                    grinding_result["specific_energy_consumption"]["potential_savings_kwh"],
-                )
-                # Explain why an alert may or may not be generated
-                if grinding_result["specific_energy_consumption"]["status"] == "critical":
-                    alerts.append(
-                        {
-                            "created_at": datetime.now().isoformat(),
-                            "process_area": "grinding",
-                            "recommendation_type": "energy_optimization",
-                            "priority_level": 1,
-                            "description": "Critical grinding energy consumption detected.",
-                            "estimated_savings_kwh": grinding_result["specific_energy_consumption"]["potential_savings_kwh"],
-                            "estimated_savings_cost": grinding_result["specific_energy_consumption"]["potential_savings_kwh"] * 0.15,
-                            "action_taken": False,
-                        }
-                    )
+                sec = grinding_result["specific_energy_consumption"]
+                logger.info("[realtime] Grinding SEC=%.2f status=%s potential_savings_kwh=%.2f", sec["value"], sec["status"], sec["potential_savings_kwh"])
+                # Prevent duplicate alerts for the same source row. We rely on new columns: source_row_id, source_table.
+                if sec["status"] == "critical":
+                    grinding_source_id = latest_grinding.get("id")
+                    if grinding_source_id is None:
+                        logger.warning("[realtime] Latest grinding row missing 'id'; cannot perform duplicate alert check")
+                    else:
+                        # Query if an alert already exists for this specific source row.
+                        existing = await self.db.get_recent(
+                            AI_RECOMMENDATIONS, where={"process_area": "grinding", "recommendation_type": "energy_optimization", "source_row_id": grinding_source_id}, limit=1
+                        )
+                        if existing:
+                            logger.debug(
+                                "[realtime] Skipping alert insert; existing alert id=%s already recorded for grinding row id=%s", existing[0].get("id"), grinding_source_id
+                            )
+                        else:
+                            alerts.append(
+                                {
+                                    "created_at": datetime.now().isoformat(),
+                                    "process_area": "grinding",
+                                    "recommendation_type": "energy_optimization",
+                                    "priority_level": 1,
+                                    "description": "Critical grinding energy consumption detected.",
+                                    "estimated_savings_kwh": sec["potential_savings_kwh"],
+                                    "estimated_savings_cost": sec["potential_savings_kwh"] * 0.15,
+                                    "action_taken": False,
+                                    # linkage fields
+                                    "source_row_id": grinding_source_id,
+                                    "source_table": GRINDING_OPERATIONS,
+                                }
+                            )
+                    if not alerts:
+                        logger.debug("[realtime] No new alert added (duplicate or missing id)")
                 else:
                     logger.debug("[realtime] No alert generated because status != critical")
 
@@ -145,10 +172,38 @@ class CementPlantScheduler:
 def setup_scheduler(scheduler: AsyncIOScheduler, supabase_manager, websocket_manager):
     """Register periodic jobs and return the bound scheduler helper instance."""
     plant_scheduler = CementPlantScheduler(supabase_manager, websocket_manager)
-    scheduler.add_job(plant_scheduler.process_realtime_data, IntervalTrigger(seconds=15), id="realtime_processing", replace_existing=True, max_instances=1, coalesce=True)
-    scheduler.add_job(plant_scheduler.run_optimization_analysis, IntervalTrigger(minutes=15), id="optimization_analysis", replace_existing=True, max_instances=1, coalesce=True)
-    scheduler.add_job(plant_scheduler.check_equipment_health, IntervalTrigger(hours=4), id="equipment_health", replace_existing=True, max_instances=1, coalesce=True)
-    scheduler.add_job(plant_scheduler.populate_sample_data, IntervalTrigger(seconds=30), id="sample_data", replace_existing=True, max_instances=1, coalesce=True)
+    scheduler.add_job(
+        plant_scheduler.process_realtime_data,
+        IntervalTrigger(seconds=15),
+        id="realtime_processing",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        plant_scheduler.run_optimization_analysis,
+        IntervalTrigger(minutes=15),
+        id="optimization_analysis",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        plant_scheduler.check_equipment_health,
+        IntervalTrigger(hours=4),
+        id="equipment_health",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
+    scheduler.add_job(
+        plant_scheduler.populate_sample_data,
+        IntervalTrigger(seconds=30),
+        id="sample_data",
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+    )
     jobs = scheduler.get_jobs()
 
     logger.info("Scheduled tasks configured (%d jobs)", len(jobs))
