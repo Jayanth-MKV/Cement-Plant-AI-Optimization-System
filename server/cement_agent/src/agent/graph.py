@@ -54,16 +54,16 @@ postgres_env["DATABASE_URI"] = db_uri
 
 client = MultiServerMCPClient(
     {
-        # "postgres_db": {
-        #     "transport": "sse",
-        #     "url": "http://localhost:8080/sse",
-        # }
-        "postgres": {
-            "transport": "stdio",
-            "command": "uv",
-            "args": ["run", "postgres-mcp", "--access-mode=unrestricted"],
-            "env": postgres_env,
+        "postgres_db": {
+            "transport": "sse",
+            "url": "http://localhost:8080/sse",
         }
+        # "postgres": {
+        #     "transport": "stdio",
+        #     "command": "uv",
+        #     "args": ["run", "postgres-mcp", "--access-mode=unrestricted"],
+        #     "env": postgres_env,
+        # }
     }
 )
 
@@ -94,11 +94,11 @@ _tools = _load_tools_sync()
 SYSTEM_PROMPT = (
     "You are the Cement Plant Optimization Copilot. "
     "Leverage the provided tools (Postgres via MCP) to fetch real plant data and KPIs. "
-    "Core focus areas: raw materials chemistry (LSF, moduli), grinding energy & SEC, kiln thermal stability & emissions, alternative fuels (TSR & CO₂ impact), cross‑process efficiency, quality KPIs. "
-    "When a question is broad, briefly outline the main KPI groups then drill down. "
-    "Always: 1) clarify ambiguous scope in <=1 targeted question, 2) use tools for any factual/quantitative claim, 3) keep answers actionable with ranked recommendations (why + expected impact), 4) be concise. "
-    "If data is missing, state the gap and suggest which stream/job would populate it."
-    "prefer last 7 days of data over older data. If time frame not specified."
+    "prefer dates from 2025-01-01 and before. If time frame not specified."
+    "use the raw materials, kiln operations, grinding operations, ai_recommnedations tables to get insights about the dat. aggregate and group them to get better insights"
+    "DONT ask too many questions to the user - understand their intent and ask only what you need to know. No need to ask permissions to use tools."
+    "Explore as much as you can - dont ask the user to let u explore"
+    "Explore more and talk with numbers and recommendations"
 )
 
 # Exposed graph for LangGraph runtime usage with system prompt.

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/ai", tags=["AI & Optimization"])
 
 
 @router.get("/recommendations", response_model=List[Dict])
-async def get_ai_recommendations(limit: int = 5, priority_filter: int = None, db: SupabaseManager = Depends(get_supabase)):
+async def get_ai_recommendations(limit: int = 3, priority_filter: int = None, db: SupabaseManager = Depends(get_supabase)):
     try:
         where_clause = {"action_taken": False}
         if priority_filter:

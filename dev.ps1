@@ -12,7 +12,7 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory = $false, Position = 0)]
-    [ValidateSet('help', 'front', 'back', 'agent' , 'dev')]
+    [ValidateSet('help', 'front', 'back', 'agent' , 'dev', "mcp")]
     [string]$Command = "help" # Default to 'help' if no command is provided
 )
 
@@ -26,6 +26,7 @@ switch ($Command) {
         Write-Host "  ./run-dev.ps1 front    - Starts the frontend development server (Vite)"
         Write-Host "  ./run-dev.ps1 back     - Starts the backend development server (Uvicorn with reload)"
         Write-Host "  ./run-dev.ps1 agent    - Starts the agent server"
+        Write-Host "  ./run-dev.ps1 mcp      - Starts the mcp server"
         Write-Host "  ./run-dev.ps1 dev      - Starts both frontend and backend development servers"
     }
 
@@ -45,6 +46,12 @@ switch ($Command) {
         Write-Host "Starting langraph agent server..."
         Set-Location -Path (Join-Path $PSScriptRoot "server/cement_agent")
         uv run langgraph dev
+    }
+
+    "mcp" {
+        Write-Host "Starting langraph mcp server..."
+        Set-Location -Path (Join-Path $PSScriptRoot "server/")
+        uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted
     }
 
     "dev" {

@@ -35,13 +35,9 @@ The agent uses real data (not static embeddings) by calling Postgres via MCP too
 
 We attach a `MultiServerMCPClient` with a single Postgres server definition:
 
+Run the MCP using this
 ```
-"postgres": {
-  "transport": "stdio",
-  "command": "uv",
-  "args": ["run", "postgres-mcp", "--access-mode=unrestricted"],
-  "env": { "DATABASE_URI": <your connection string> }
-}
+uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted <DATABASE CONNECTION STRING>
 ```
 
 The `postgres-mcp` package exposes database schema & query tools following the MCP tool contract so the agent can:
