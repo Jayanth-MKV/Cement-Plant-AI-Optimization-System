@@ -36,6 +36,7 @@ The agent uses real data (not static embeddings) by calling Postgres via MCP too
 We attach a `MultiServerMCPClient` with a single Postgres server definition:
 
 Run the MCP using this
+
 ```
 uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted <DATABASE CONNECTION STRING>
 ```
@@ -62,7 +63,17 @@ Injected through `state_modifier` in `graph.py`.
 
 ## 🚀 Run Locally
 
-Prereqs: `uv` (or Python 3.9+), environment variable `GOOGLE_API_KEY`, and a `DATABASE_URI` pointing to your Postgres instance (same schema used by the FastAPI backend).
+Prereqs: `uv` (or Python 3.9+), environment variables below, and a running Postgres instance (same schema used by the FastAPI backend).
+
+Required environment variables:
+
+```
+DATABASE_URI=postgresql://user:pass@host:5432/postgres   # used by MCP server & injected into tools
+GEMINI_API_KEY=...      # primary Gemini key (google-genai)
+GOOGLE_API_KEY=...      # (alias/compat) if library expects this name
+GROQ_API_KEY=...        # optional (only if adding Groq models later)
+LANGSMITH_PROJECT=cement-plant-optimization  # optional tracing
+```
 
 1. Create `.env` in `server/` or `cement_agent/` (both loaded if in path):
 
@@ -84,6 +95,8 @@ uv run python cement_agent\src\agent\graph.py
 ```
 
 You should see a tool list then a streamed answer.
+
+Order reminder: Start the MCP server BEFORE the agent so `client.get_tools()` succeeds.
 
 ---
 

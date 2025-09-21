@@ -6,16 +6,29 @@ FastAPI + Supabase backend providing: real‑time plant telemetry aggregation, s
 
 ## ⚡ Quick Start (TL;DR)
 
-Clone repo at root (where `dev.ps1` lives) then create a `.env` in `server/` with:
+Clone repo at root (where `dev.ps1` lives) then create a `.env` in `server/`.
+
+Server runtime variables (FastAPI backend):
 
 ```
 SUPABASE_URL=...
 SUPABASE_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
+API_HOST=0.0.0.0
 API_PORT=8000
 DEBUG=true
-GOOGLE_API_KEY=... # for Gemini (agent)
-DATABASE_URI=postgresql://user:pass@host:port/dbname  # for MCP Postgres agent tools
+SCHEDULER_TIMEZONE=UTC
+DATABASE_URL=postgresql://user:pass@host:5432/postgres
+```
+
+Agent + MCP variables (can live in same `.env` OR a dedicated `server/cement_agent/.env`):
+
+```
+DATABASE_URI=postgresql://user:pass@host:5432/postgres   # consumed by postgres-mcp & agent graph
+GEMINI_API_KEY=...      # primary Gemini key (alias of GOOGLE_API_KEY if you prefer one)
+GOOGLE_API_KEY=...      # retained for google-genai client compatibility
+GROQ_API_KEY=...        # optional future model provider
+LANGSMITH_PROJECT=cement-plant-optimization  # optional tracing/observability
 ```
 
 Install frontend deps (once):
@@ -40,11 +53,12 @@ Manual (without script):
 ```
 cd server
 uv run main.py              # API
-uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted  # MCP server
-cd cement_agent && uv run langgraph dev  # Agent dev server
+uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted <DATABASE_URI>
+cd cement_agent && uv run langgraph dev  # Agent dev server (expects MCP already running)
 ```
 
 Access:
+
 - API Docs: http://localhost:8000/docs
 - WebSocket Endpoint: ws://localhost:8000/ws/plant-data
 - Agent (LangGraph Dev UI): http://localhost:2024 (default langgraph dev)
@@ -257,6 +271,7 @@ Preferred: PowerShell helper script `dev.ps1` (Windows). For other shells, repli
 7. Start frontend: `./dev.ps1 front`
 
 Hot reload:
+
 - Backend auto reload via `uv run main.py`
 - Agent auto reload via `langgraph dev`
 - Frontend via `npm run dev`
@@ -267,12 +282,12 @@ Health check: `GET http://localhost:8000/health` should return OK JSON.
 
 ## 📡 Data Consistency & Gaps (Next Improvements)
 
-| Gap                                            | Impact                | Action                                        |
-| ---------------------------------------------- | --------------------- | --------------------------------------------- |
-| Missing ingestion jobs for raw/periodic tables | Demo data stale       | Implement simulator in `populate_sample_data` |
-| Equipment health logic placeholder             | No utility insights   | Implement scoring & alerts                    |
-| No auth / RBAC                                 | Open endpoints        | Add API key / JWT layer                       |
-| Lack of pagination                             | Heavy queries later   | Add cursor/limit params                       |
+| Gap                                            | Impact              | Action                                        |
+| ---------------------------------------------- | ------------------- | --------------------------------------------- |
+| Missing ingestion jobs for raw/periodic tables | Demo data stale     | Implement simulator in `populate_sample_data` |
+| Equipment health logic placeholder             | No utility insights | Implement scoring & alerts                    |
+| No auth / RBAC                                 | Open endpoints      | Add API key / JWT layer                       |
+| Lack of pagination                             | Heavy queries later | Add cursor/limit params                       |
 
 ---
 

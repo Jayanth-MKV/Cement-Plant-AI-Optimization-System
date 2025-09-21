@@ -16,16 +16,29 @@ PowerShell helper script at repo root: `dev.ps1` (ensure execution policy allows
    cd Cement-Plant-AI-Optimization-System
    cd frontend; npm install; cd ..
    ```
-2. Backend env (`server/.env`):
+2. Backend env (`server/.env`) – server variables:
+
    ```
    SUPABASE_URL=...
    SUPABASE_KEY=...
    SUPABASE_SERVICE_ROLE_KEY=...
+   API_HOST=0.0.0.0
    API_PORT=8000
    DEBUG=true
-   GOOGLE_API_KEY=...
-   DATABASE_URI=postgresql://user:pass@host:5432/db
+   SCHEDULER_TIMEZONE=UTC
+   DATABASE_URL=postgresql://user:pass@host:5432/postgres
    ```
+
+   Agent (LangGraph) variables (may live in `server/.env` or separate `server/cement_agent/.env`):
+
+   ```
+   DATABASE_URI=postgresql://user:pass@host:5432/postgres   # Used by MCP tools & agent graph
+   GEMINI_API_KEY=...    # or GOOGLE_API_KEY depending on provider naming
+   GOOGLE_API_KEY=...    # kept for compatibility with google-genai client
+   GROQ_API_KEY=...      # (optional) if adding Groq models later
+   LANGSMITH_PROJECT=cement-plant-optimization  # (optional) tracing/observability
+   ```
+
 3. Run services (each opens own terminal window):
    ```powershell
    ./dev.ps1 mcp    # Postgres MCP tools (SSE :8080)
@@ -45,10 +58,16 @@ PowerShell helper script at repo root: `dev.ps1` (ensure execution policy allows
    - Agent Dev UI: http://localhost:2024 (default langgraph dev)
 
 5. (Optional) Manual commands if not using script:
+
    ```powershell
+   # Backend API
    cd server; uv run main.py
-   uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted
-   cd cement_agent; uv run langgraph dev
+
+   # Start MCP Postgres server (required BEFORE starting agent so tools resolve)
+   uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted <DATABASE_URI or URL>
+
+   # In a new terminal: start LangGraph agent (expects MCP at :8080)
+   cd server/cement_agent; uv run langgraph dev
    ```
 
 ---
@@ -177,7 +196,6 @@ Plant Sensors → N8N Workflows → PostgreSQL Database → FastAPI Backend (Gem
    # Add your API keys:
    GOOGLE_AI_API_KEY=your_gemini_api_key``` Supabase_CONFIG=your_Supabase_config
    POSTGRES_URL=your_database_url
-   N8N_WEBHOOK_URL=your_n8n_webhook
    ````
 
 3. **Database Setup**
