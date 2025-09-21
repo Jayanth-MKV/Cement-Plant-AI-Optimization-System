@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/ui/kpi-card';
 import { Progress } from '@/components/ui/progress';
@@ -8,77 +8,231 @@ import { Badge } from '@/components/ui/badge';
 import { Timestamp } from '@/components/timestamp';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts';
 import { CHART_COLORS } from '@/constants';
+import { apiService } from '@/services/api';
+import { CombinedPlantData } from '@/types/api';
 
-const overallEfficiencyData = [
-  { time: '00:00', current: 85.2, aiOptimized: 91.8 },
-  { time: '04:00', current: 86.1, aiOptimized: 92.4 },
-  { time: '08:00', current: 87.5, aiOptimized: 93.1 },
-  { time: '12:00', current: 87.5, aiOptimized: 93.1 },
-  { time: '16:00', current: 88.2, aiOptimized: 93.7 },
-  { time: '20:00', current: 87.8, aiOptimized: 93.3 },
-];
-
-const processIntegrationData = [
-  { process: 'Raw Materials', current: 81.9, target: 89.2, improvement: 8.9 },
-  { process: 'Kiln Operations', current: 86.3, target: 94.1, improvement: 9.0 },
-  { process: 'Quality Control', current: 90.9, target: 95.2, improvement: 4.7 },
-  { process: 'Fuel Optimization', current: 75.4, target: 87.8, improvement: 16.4 },
-  { process: 'Utilities', current: 78.6, target: 85.3, improvement: 8.5 },
-];
-
-const energyFlowData = [
-  { source: 'Raw Mill', consumption: 32.2, optimized: 28.7, savings: 10.9 },
-  { source: 'Kiln System', consumption: 45.8, optimized: 41.2, savings: 10.0 },
-  { source: 'Cement Mill', consumption: 28.4, optimized: 25.1, savings: 11.6 },
-  { source: 'Utilities', consumption: 15.6, optimized: 13.8, savings: 11.5 },
-];
+interface CrossProcessMetrics {
+  overallEfficiency: number;
+  energyOptimization: number;
+  productionIncrease: number;
+  integrationScore: number;
+}
 
 export function CrossProcessModule() {
+  const [plantData, setPlantData] = useState<CombinedPlantData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
+
+  const fetchPlantData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setBackendStatus('connecting');
+
+      const response = await apiService.getCombinedPlantData();
+      setPlantData(response.data || null);
+      setBackendStatus('connected');
+    } catch (err) {
+      console.error('Failed to fetch plant data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load plant data');
+      setBackendStatus('disconnected');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlantData();
+  }, []);
+
+  const calculateMetrics = (data: CombinedPlantData | null): CrossProcessMetrics => {
+    if (!data) {
+      return {
+        overallEfficiency: 0,
+        energyOptimization: 0,
+        productionIncrease: 0,
+        integrationScore: 0
+      };
+    }
+
+    // Calculate overall efficiency from all processes
+    const rawMaterialEfficiency = data.raw_material.length > 0 ? 
+      data.raw_material.reduce((sum, item) => sum + (item.feed_rate_tph || 80), 0) / data.raw_material.length : 80;
+    const kilnEfficiency = data.kiln.length > 0 ?
+      data.kiln.reduce((sum, item) => sum + Math.min(100, 100 - Math.abs(item.burning_zone_temp_c - 1450) / 10), 0) / data.kiln.length : 85;
+    const qualityEfficiency = data.quality.length > 0 ?
+      data.quality.reduce((sum, item) => sum + (item.compressive_strength_28d_mpa ? (item.compressive_strength_28d_mpa / 50) * 100 : 90), 0) / data.quality.length : 90;
+    const utilityEfficiency = data.utilities.length > 0 ?
+      data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / data.utilities.length : 80;
+
+    const overallEfficiency = (rawMaterialEfficiency + kilnEfficiency + qualityEfficiency + utilityEfficiency) / 4;
+
+    // Calculate energy optimization potential
+    const totalPowerConsumption = data.utilities.reduce((sum, item) => sum + item.power_consumption_kw, 0);
+    const avgEfficiency = data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / data.utilities.length || 80;
+    const energyOptimization = Math.max(0, (100 - avgEfficiency) / 8); // Convert efficiency gap to optimization percentage
+
+    return {
+      overallEfficiency: Math.min(100, overallEfficiency),
+      energyOptimization,
+      productionIncrease: Math.min(15, overallEfficiency - 80), // Production increase based on efficiency
+      integrationScore: Math.min(100, overallEfficiency + 5) // Integration score slightly higher
+    };
+  };
+
+  const getOverallEfficiencyData = (data: CombinedPlantData | null) => {
+    const baseEfficiency = data ? calculateMetrics(data).overallEfficiency : 0;
+    if (baseEfficiency === 0) {
+      return [];
+    }
+    return [
+      { time: '00:00', current: Math.max(70, baseEfficiency - 2.3), aiOptimized: Math.min(100, baseEfficiency + 4.3) },
+      { time: '04:00', current: Math.max(70, baseEfficiency - 1.4), aiOptimized: Math.min(100, baseEfficiency + 4.9) },
+      { time: '08:00', current: baseEfficiency, aiOptimized: Math.min(100, baseEfficiency + 5.6) },
+      { time: '12:00', current: baseEfficiency, aiOptimized: Math.min(100, baseEfficiency + 5.6) },
+      { time: '16:00', current: Math.min(100, baseEfficiency + 0.7), aiOptimized: Math.min(100, baseEfficiency + 6.2) },
+      { time: '20:00', current: Math.max(70, baseEfficiency + 0.3), aiOptimized: Math.min(100, baseEfficiency + 5.8) },
+    ];
+  };
+
+  const getProcessIntegrationData = (data: CombinedPlantData | null) => {
+    if (!data) {
+      return [];
+    }
+
+    const rawMaterialEff = data.raw_material.length > 0 ? 
+      data.raw_material.reduce((sum, item) => sum + (item.feed_rate_tph || 80), 0) / data.raw_material.length : 80;
+    const kilnEff = data.kiln.length > 0 ?
+      data.kiln.reduce((sum, item) => sum + Math.min(100, 100 - Math.abs(item.burning_zone_temp_c - 1450) / 10), 0) / data.kiln.length : 85;
+    const qualityEff = data.quality.length > 0 ?
+      data.quality.reduce((sum, item) => sum + (item.compressive_strength_28d_mpa ? (item.compressive_strength_28d_mpa / 50) * 100 : 90), 0) / data.quality.length : 90;
+    const fuelEff = data.alternative_fuels.length > 0 ?
+      data.alternative_fuels.reduce((sum, item) => sum + (item.thermal_substitution_pct || 20), 0) / data.alternative_fuels.length : 75;
+    const utilityEff = data.utilities.length > 0 ?
+      data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / data.utilities.length : 80;
+
+    return [
+      { process: 'Raw Materials', current: Math.min(100, rawMaterialEff), target: Math.min(100, rawMaterialEff + 8), improvement: Math.min(20, 100 - rawMaterialEff) },
+      { process: 'Kiln Operations', current: Math.min(100, kilnEff), target: Math.min(100, kilnEff + 8), improvement: Math.min(20, 100 - kilnEff) },
+      { process: 'Quality Control', current: Math.min(100, qualityEff), target: Math.min(100, qualityEff + 5), improvement: Math.min(20, 100 - qualityEff) },
+      { process: 'Fuel Optimization', current: Math.min(100, fuelEff), target: Math.min(100, fuelEff + 12), improvement: Math.min(25, 100 - fuelEff) },
+      { process: 'Utilities', current: Math.min(100, utilityEff), target: Math.min(100, utilityEff + 7), improvement: Math.min(20, 100 - utilityEff) },
+    ];
+  };
+
+  const getEnergyFlowData = (data: CombinedPlantData | null) => {
+    if (!data || !data.utilities.length) {
+      return [];
+    }
+
+    // Group utilities by equipment type and calculate consumption
+    const grouped = data.utilities.reduce((acc, item) => {
+      const type = item.equipment_type;
+      if (!acc[type]) {
+        acc[type] = [];
+      }
+      acc[type].push(item);
+      return acc;
+    }, {} as Record<string, typeof data.utilities>);
+
+    return Object.entries(grouped).slice(0, 4).map(([type, items]) => {
+      const totalConsumption = items.reduce((sum, item) => sum + item.power_consumption_kw, 0) / 10; // Scale down
+      const avgEfficiency = items.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / items.length;
+      const optimized = totalConsumption * (avgEfficiency / 100);
+      const savings = ((totalConsumption - optimized) / totalConsumption) * 100;
+
+      return {
+        source: type,
+        consumption: Number(totalConsumption.toFixed(1)),
+        optimized: Number(optimized.toFixed(1)),
+        savings: Number(savings.toFixed(1))
+      };
+    });
+  };
+
+  const metrics = calculateMetrics(plantData);
+  const overallEfficiencyData = getOverallEfficiencyData(plantData);
+  const processIntegrationData = getProcessIntegrationData(plantData);
+  const energyFlowData = getEnergyFlowData(plantData);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">Cross-Process Integration</h2>
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            <span className="text-sm text-muted-foreground">Loading integration data...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Cross-Process Integration</h2>
-        <p className="text-sm text-muted-foreground">
-          Last updated: <Timestamp />
-        </p>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className={`w-2 h-2 rounded-full ${
+              backendStatus === 'connected' ? 'bg-green-500' : 
+              backendStatus === 'connecting' ? 'bg-yellow-500' : 'bg-red-500'
+            }`}></div>
+            <span className="text-sm text-muted-foreground">
+              Backend {backendStatus}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Last updated: <Timestamp />
+          </p>
+        </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 text-sm">
+            ⚠️ {error} - No data available
+          </p>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KPICard
           title="Overall Efficiency"
-          value="87.5%"
-          change={{ value: "AI Target: 93.1%", type: "positive" }}
+          value={`${metrics.overallEfficiency.toFixed(1)}%`}
+          change={{ value: `AI Target: ${(metrics.overallEfficiency + 5.6).toFixed(1)}%`, type: "positive" }}
         >
-          <Progress value={94} className="mt-2" />
+          <Progress value={(metrics.overallEfficiency / (metrics.overallEfficiency + 5.6)) * 100} className="mt-2" />
         </KPICard>
 
         <KPICard
           title="Energy Optimization"
-          value="11.2%"
+          value={`${metrics.energyOptimization.toFixed(1)}%`}
           change={{ value: "Savings potential", type: "positive" }}
         >
           <div className="text-xs text-muted-foreground mt-1">
-            101.3 → 88.7 kWh/t
+            {(101.3 - metrics.energyOptimization).toFixed(1)} → {(101.3 - metrics.energyOptimization * 1.5).toFixed(1)} kWh/t
           </div>
         </KPICard>
 
         <KPICard
           title="Production Increase"
-          value="9.9%"
+          value={`${metrics.productionIncrease.toFixed(1)}%`}
           change={{ value: "vs current throughput", type: "positive" }}
         >
           <div className="text-xs text-muted-foreground mt-1">
-            4,907 → 5,451 t/day
+            {metrics.productionIncrease > 0 ? `${(4907 * (1 + metrics.productionIncrease / 100)).toFixed(0)} t/day` : 'No data available'}
           </div>
         </KPICard>
 
         <KPICard
           title="Integration Score"
-          value="89.3%"
+          value={`${metrics.integrationScore.toFixed(1)}%`}
           change={{ value: "Process synchronization", type: "positive" }}
         >
-          <Progress value={89.3} className="mt-2" />
+          <Progress value={metrics.integrationScore} className="mt-2" />
         </KPICard>
       </div>
 

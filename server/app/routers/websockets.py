@@ -1,11 +1,10 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from typing import Optional
 import json
 import asyncio
 from datetime import datetime
 import logging
 
-from app.core.dependencies import get_supabase
 from app.core.tables import (
     GRINDING_OPERATIONS,
     KILN_OPERATIONS,
@@ -28,8 +27,10 @@ manager = default_manager
 async def websocket_plant_data(
     websocket: WebSocket,
     client_id: Optional[str] = Query(None),
-    db: SupabaseManager = Depends(get_supabase),
 ):
+    # Get database manager from app state since WebSocket doesn't have Request
+    db = websocket.scope['app'].state.supabase
+    
     client_info = {
         "client_id": client_id or f"client_{datetime.now().timestamp()}",
         "connected_at": datetime.now().isoformat(),

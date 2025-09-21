@@ -1,120 +1,124 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICard } from '@/components/ui/kpi-card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Timestamp } from '@/components/timestamp';
+import { apiService } from '../../services/api';
+import { useWebSocket } from '../../services/websocket';
+import type { QualityData } from '../../types/api';
 
 export function QualityControlModule() {
+  const [qualityData, setQualityData] = useState<QualityData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+
+  // WebSocket connection for real-time updates
+  const { 
+    isConnected: wsConnected, 
+    error: wsError 
+  } = useWebSocket('plant-data');
+
+  // Load initial data from backend
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Load quality control data
+        const response = await apiService.getQualityData();
+        setQualityData(response.data || []);
+
+        setLastUpdate(new Date());
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load quality control data';
+        setError(errorMessage);
+        console.error('❌ Quality Control Module Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Calculate KPIs from real data
+  const kpis = React.useMemo(() => {
+    if (!qualityData.length) {
+      return {
+        averageQualityScore: 0,
+        complianceRate: 0,
+        defectCount: 0,
+        latestStrength: 0,
+        latestFineness: 0
+      };
+    }
+
+    // Get latest quality metrics
+    const latest = qualityData[0] || {};
+    
+    return {
+      averageQualityScore: latest.compressive_strength_28d_mpa ? (latest.compressive_strength_28d_mpa / 50) * 100 : 0,
+      complianceRate: 0, // Cannot calculate without fineness data
+      defectCount: qualityData.filter(q => q.compressive_strength_28d_mpa && q.compressive_strength_28d_mpa < 40).length,
+      latestStrength: latest.compressive_strength_28d_mpa || 0,
+      latestFineness: 0 // Cannot calculate without fineness data
+    };
+  }, [qualityData]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Quality Control</h2>
-        <p className="text-sm text-muted-foreground">
-          Last updated: <Timestamp />
-        </p>
+        <div className="text-sm text-muted-foreground flex items-center gap-4">
+          <div>Last updated: {lastUpdate.toLocaleTimeString()}</div>
+          <div className={`px-2 py-1 rounded text-xs font-medium ${
+            wsConnected ? 'bg-green-100 text-green-800' : qualityData.length > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+          }`}>
+            {loading ? 'Loading...' : error ? 'API Connection Failed' : wsConnected ? 'Live Data Connected' : 'API Connected (WebSocket Offline)'}
+          </div>
+        </div>
       </div>
 
+      {/* Error States */}
+      {error && (
+        <Card className="p-4 border-red-200 bg-red-50">
+          <p className="text-red-800">⚠️ Backend API connection failed: {error}. No quality data available.</p>
+        </Card>
+      )}
+
+      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KPICard
-          title="AI Quality Score"
-          value="90.9%"
-          change={{ value: "+2.1% this week", type: "positive" }}
-        />
-        <KPICard
-          title="Vision Accuracy"
-          value="98.54%"
-          change={{ value: "Defect detection", type: "positive" }}
-        />
-        <KPICard
-          title="Compliance Rate"
-          value="98.7%"
-          change={{ value: "Specification compliance", type: "positive" }}
-        />
-        <KPICard
-          title="Defects Today"
-          value="8"
-          change={{ value: "5 corrections made", type: "neutral" }}
-        />
+        <KPICard title="AI Quality Score" value={loading ? "..." : `${kpis.averageQualityScore.toFixed(1)}%`} change={{ value: "+2.1% this week", type: "positive" }} />
+        <KPICard title="Vision Accuracy" value="98.54%" change={{ value: "Defect detection", type: "positive" }} />
+        <KPICard title="Compliance Rate" value={loading ? "..." : `${kpis.complianceRate.toFixed(1)}%`} change={{ value: "Specification compliance", type: "positive" }} />
+        <KPICard title="Defects Today" value={loading ? "..." : `${kpis.defectCount}`} change={{ value: "5 corrections made", type: "neutral" }} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Real-time Quality Metrics</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm">
-                <span>Compressive Strength</span>
-                <span>45.5 MPa</span>
-              </div>
-              <Progress value={91} className="mt-1" />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm">
-                <span>Fineness (Blaine)</span>
-                <span>348.7 m²/kg</span>
-              </div>
-              <Progress value={87} className="mt-1" />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm">
-                <span>Setting Time</span>
-                <span>64.4 min</span>
-              </div>
-              <Progress value={82} className="mt-1" />
-            </div>
-            <div>
-              <div className="flex justify-between text-sm">
-                <span>Free Lime Content</span>
-                <span>1.36%</span>
-              </div>
-              <Progress value={94} className="mt-1" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Defect Detection</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold">98.54%</div>
-              <div className="text-sm text-muted-foreground">Vision Accuracy</div>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="font-medium">8</div>
-                <div className="text-muted-foreground">Defects Detected</div>
-              </div>
-              <div>
-                <div className="font-medium">0.35%</div>
-                <div className="text-muted-foreground">False Positive Rate</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Quality Alerts</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-yellow-50">Warning</Badge>
-              <span className="text-sm">Quality deviation predicted in 6 hours</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="bg-green-50">Good</Badge>
-              <span className="text-sm">All parameters within spec</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Backend Connection Status */}
+      <Card className="p-4 bg-blue-50 border-blue-200">
+        <h4 className="font-medium text-blue-900 mb-3">🔬 Quality Control Data Sources</h4>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-blue-700">
+          <div>
+            <div className="font-medium">Quality Control Data</div>
+            <div className="text-xs">{qualityData.length > 0 ? `✅ ${qualityData.length} test records loaded` : '⚠️ No data available'}</div>
+          </div>
+          <div>
+            <div className="font-medium">Backend API</div>
+            <div className="text-xs">{error ? '⚠️ Connection failed' : '✅ Connected'}</div>
+          </div>
+          <div>
+            <div className="font-medium">Last Update</div>
+            <div className="text-xs">{lastUpdate.toLocaleTimeString()}</div>
+          </div>
+        </div>
+        <div className="mt-3 pt-3 border-t border-blue-200">
+          <div className="font-medium text-blue-800">Overall Status: {loading ? '🔄 Loading...' : error ? '⚠️ API Connection Failed' : '✅ Connected'}</div>
+        </div>
+      </Card>
     </div>
   );
 }
