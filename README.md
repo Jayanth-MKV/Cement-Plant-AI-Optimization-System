@@ -3,6 +3,53 @@
 ## 🏭 Overview
 A Generative AI-powered autonomous cement plant optimization platform built for the **GenAI Exchange Hackathon PS-2**. This system enables real-time monitoring and optimization of cement operations, driving energy savings, quality assurance, cost reduction, alternative fuel integration, and predictive maintenance—all powered by intelligent AI recommendations via Gemini and Google Cloud Vision.
 
+---
+## ⚡ Quick Start (Developers)
+
+PowerShell helper script at repo root: `dev.ps1` (ensure execution policy allows local scripts: `Set-ExecutionPolicy -Scope Process Bypass` if needed).
+
+1. Clone & install deps:
+   ```powershell
+   git clone <repo-url>
+   cd Cement-Plant-AI-Optimization-System
+   cd frontend; npm install; cd ..
+   ```
+2. Backend env (`server/.env`):
+   ```
+   SUPABASE_URL=...
+   SUPABASE_KEY=...
+   SUPABASE_SERVICE_ROLE_KEY=...
+   API_PORT=8000
+   DEBUG=true
+   GOOGLE_API_KEY=...
+   DATABASE_URI=postgresql://user:pass@host:5432/db
+   ```
+3. Run services (each opens own terminal window):
+   ```powershell
+   ./dev.ps1 mcp    # Postgres MCP tools (SSE :8080)
+   ./dev.ps1 back   # FastAPI backend
+   ./dev.ps1 agent  # LangGraph agent (Gemini + tools)
+   ./dev.ps1 front  # Next.js frontend
+   ```
+   Or all at once:
+   ```powershell
+   ./dev.ps1 dev
+   ```
+4. Open:
+   - Frontend: http://localhost:3000
+   - API Docs: http://localhost:8000/docs
+   - WebSocket: ws://localhost:8000/ws/plant-data
+   - Agent Dev UI: http://localhost:2024 (default langgraph dev)
+
+5. (Optional) Manual commands if not using script:
+   ```powershell
+   cd server; uv run main.py
+   uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted
+   cd cement_agent; uv run langgraph dev
+   ```
+
+---
+
 ## ✨ Key Features
 - **Raw Material Optimization:** Real-time feed variability prediction and grinding efficiency optimization
 - **Autonomous Kiln Control:** AI-powered temperature and fuel mix optimization for energy reduction

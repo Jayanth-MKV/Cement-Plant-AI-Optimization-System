@@ -1,6 +1,56 @@
 # Cement Plant AI Optimization System
 
-FastAPI + Supabase backend providing: real‑time plant telemetry aggregation, scheduled AI/analytics jobs, cross‑process KPI generation, and WebSocket streaming for UI dashboards.
+FastAPI + Supabase backend providing: real‑time plant telemetry aggregation, scheduled AI/analytics jobs, cross‑process KPI generation, WebSocket streaming for UI dashboards, plus a LangGraph agent + MCP Postgres tools.
+
+---
+
+## ⚡ Quick Start (TL;DR)
+
+Clone repo at root (where `dev.ps1` lives) then create a `.env` in `server/` with:
+
+```
+SUPABASE_URL=...
+SUPABASE_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+API_PORT=8000
+DEBUG=true
+GOOGLE_API_KEY=... # for Gemini (agent)
+DATABASE_URI=postgresql://user:pass@host:port/dbname  # for MCP Postgres agent tools
+```
+
+Install frontend deps (once):
+
+```
+cd frontend
+npm install
+```
+
+Backend & agent use `uv` (fast Python package manager). From project root run one of:
+
+```
+./dev.ps1 back    # backend API only (FastAPI)
+./dev.ps1 agent   # LangGraph agent (Gemini + MCP Postgres)
+./dev.ps1 mcp     # Start Postgres MCP server (SSE on :8080)
+./dev.ps1 front   # Next.js frontend
+./dev.ps1 dev     # Launch all (opens separate terminals)
+```
+
+Manual (without script):
+
+```
+cd server
+uv run main.py              # API
+uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted  # MCP server
+cd cement_agent && uv run langgraph dev  # Agent dev server
+```
+
+Access:
+- API Docs: http://localhost:8000/docs
+- WebSocket Endpoint: ws://localhost:8000/ws/plant-data
+- Agent (LangGraph Dev UI): http://localhost:2024 (default langgraph dev)
+- Frontend: http://localhost:3000
+
+---
 
 ---
 
@@ -194,19 +244,24 @@ Create `.env` at project root with the above. Service role key required for admi
 
 ---
 
-## 🚀 Running Locally
+## 🚀 Running Locally (Expanded Details)
 
-Using [uv](https://github.com/astral-sh/uv) (preferred):
+Preferred: PowerShell helper script `dev.ps1` (Windows). For other shells, replicate commands shown in Quick Start.
 
-```
-uv run main.py
-```
+1. Install Node + deps (`frontend/`)
+2. Ensure Python 3.13 (root backend) & `uv` installed (`pip install uv` or see uv docs).
+3. Populate `server/.env`.
+4. Start MCP (optional but required for agent DB tools): `./dev.ps1 mcp`
+5. Start backend: `./dev.ps1 back`
+6. Start agent: `./dev.ps1 agent`
+7. Start frontend: `./dev.ps1 front`
 
-Or plain Uvicorn:
+Hot reload:
+- Backend auto reload via `uv run main.py`
+- Agent auto reload via `langgraph dev`
+- Frontend via `npm run dev`
 
-```
-python -m uvicorn main:app --reload --port 8000
-```
+Health check: `GET http://localhost:8000/health` should return OK JSON.
 
 ---
 
