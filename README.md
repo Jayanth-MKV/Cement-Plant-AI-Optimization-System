@@ -68,22 +68,22 @@ PowerShell helper script at repo root: `dev.ps1` (ensure execution policy allows
 ## 🏗️ System Architecture
 
 **Data Flow:**
-Plant Sensors → N8N Workflows → PostgreSQL Database → FastAPI Backend (Gemini AI) → Next.js Frontend via WebSocket/Firebase
+Plant Sensors → N8N Workflows → PostgreSQL Database → FastAPI Backend (Gemini AI) → Next.js Frontend via WebSocket/Supabase
 
 **Core Components:**
 - **Real-time Data Collection:** N8N workflows with 30-second sensor data ingestion
 - **AI Processing Layer:** Gemini API for strategic recommendations and optimization
 - **Computer Vision Pipeline:** Google Cloud Vision API for quality control
-- **Real-time Dashboard:** Next.js with Firebase for live monitoring
+- **Real-time Dashboard:** Next.js with Supabase for live monitoring
 - **Cross-Process Optimization:** Holistic AI decision-making across all plant operations
 
 ## 🛠️ Tech Stack
-- **Frontend:** Next.js 15, Firebase Realtime Database, Tailwind CSS
+- **Frontend:** Next.js 15, Supabase Realtime Database, Tailwind CSS
 - **Backend:** FastAPI, WebSocket, Python ML libraries
-- **AI/ML:** Gemini API, Google Cloud Vision API
-- **Database:** PostgreSQL with time-series optimization
-- **Automation:** N8N workflows for data pipelines and alerts
-- **Real-time:** WebSocket connections and Firebase streaming
+- **AI/ML:** Gemini API
+- **Database:** PostgreSQL
+- **Automation:** N8N/python workflows for data pipelines and alerts
+- **Real-time:** WebSocket connections and Supabase streaming
 
 ## 🚀 Getting Started
 
@@ -91,7 +91,7 @@ Plant Sensors → N8N Workflows → PostgreSQL Database → FastAPI Backend (Gem
 - Node.js 18+
 - Python 3.9+
 - PostgreSQL 14+
-- Firebase project setup
+- Supabase project setup
 - Google Cloud account with AI APIs enabled
 - N8N installation
 
@@ -111,7 +111,7 @@ Plant Sensors → N8N Workflows → PostgreSQL Database → FastAPI Backend (Gem
    cp .env.example .env
    
    # Add your API keys:
-   GOOGLE_AI_API_KEY=your_gemini_api_key``` FIREBASE_CONFIG=your_firebase_config
+   GOOGLE_AI_API_KEY=your_gemini_api_key``` Supabase_CONFIG=your_Supabase_config
    POSTGRES_URL=your_database_url
    N8N_WEBHOOK_URL=your_n8n_webhook
    ```
@@ -144,9 +144,9 @@ Plant Sensors → N8N Workflows → PostgreSQL Database → FastAPI Backend (Gem
 
 ## 👥 Developer Responsibilities
 
-### **Frontend (F) - Next.js + Firebase**
+### **Frontend (F) - Next.js + Supabase**
 - Real-time dashboard development and UI/UX design
-- Firebase integration for live data streaming
+- Supabase integration for live data streaming
 - Mobile responsiveness and component architecture
 - Demo preparation and presentation materials
 
