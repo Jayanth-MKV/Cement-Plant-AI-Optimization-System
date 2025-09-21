@@ -144,7 +144,7 @@ Plant Sensors → N8N Workflows → PostgreSQL Database → FastAPI Backend (Gem
 - API key & secret management through environment variables
 - Fine‑grained database access via Supabase policies (planned)
 
-> If any planned items (e.g., Vision API integration, RLS policies) are not yet implemented, they are tagged as planned so judges/contributors see the roadmap at a glance.
+> Planned items (e.g., Vision API integration, RLS policies) are not yet implemented, they are tagged as planned
 
 ## 🚀 Getting Started
 
