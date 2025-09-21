@@ -8,6 +8,7 @@ import { Timestamp } from '@/components/timestamp';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CHART_COLORS } from '@/constants';
 import { apiService } from '@/services/api';
+import { useWebSocket } from '@/services/websocket';
 import { KilnData } from '@/types/api';
 
 interface KilnMetrics {
@@ -25,6 +26,13 @@ export function KilnOperationsModule() {
   const [coalRate, setCoalRate] = React.useState([90]);
   const [altFuelRate, setAltFuelRate] = React.useState([20]);
 
+  // WebSocket connection for real-time updates
+  const { 
+    isConnected: wsConnected, 
+    error: wsError,
+    lastMessage
+  } = useWebSocket('plant-data');
+
   const fetchKilnData = async () => {
     try {
       setIsLoading(true);
@@ -35,7 +43,6 @@ export function KilnOperationsModule() {
       setKilnData(response.data || []);
       setBackendStatus('connected');
     } catch (err) {
-      console.error('Failed to fetch kiln data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load kiln data');
       setBackendStatus('disconnected');
     } finally {
@@ -46,6 +53,30 @@ export function KilnOperationsModule() {
   useEffect(() => {
     fetchKilnData();
   }, []);
+
+  useEffect(() => {
+    if (lastMessage && lastMessage.data?.kiln) {
+      const newKilnData = lastMessage.data.kiln;
+      setKilnData(prevData => {
+        const filteredPrevData = prevData.filter(item => item.id !== newKilnData.id);
+        return [newKilnData, ...filteredPrevData];
+      });
+      setBackendStatus('connected');
+      setError(null);
+      setIsLoading(false);
+      
+      // Update slider values based on new data
+      if (newKilnData.coal_rate_tph) {
+        setCoalRate([newKilnData.coal_rate_tph]);
+      }
+      if (newKilnData.alt_fuel_rate_tph) {
+        setAltFuelRate([newKilnData.alt_fuel_rate_tph]);
+      }
+      
+      setBackendStatus('connected');
+      setError(null); // Clear any previous errors
+    }
+  }, [lastMessage]);
 
   const calculateMetrics = (data: KilnData[]): KilnMetrics => {
     if (!data.length) {
@@ -59,7 +90,7 @@ export function KilnOperationsModule() {
 
     const latest = data[data.length - 1];
     const avgTemp = data.reduce((sum, item) => sum + item.burning_zone_temp_c, 0) / data.length;
-    const avgHeatConsumption = data.reduce((sum, item) => sum + (item.specific_heat_consumption_mjkg || 3.2), 0) / data.length;
+    const avgHeatConsumption = data.reduce((sum, item) => sum + (item.specific_heat_consumption_mjkg || 0), 0) / data.length;
     
     // Calculate efficiency based on temperature control and heat consumption
     const tempEfficiency = Math.min(100, Math.max(0, 100 - Math.abs(avgTemp - 1450) / 10));

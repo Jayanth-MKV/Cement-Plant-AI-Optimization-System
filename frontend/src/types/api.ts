@@ -103,16 +103,73 @@ export interface CombinedPlantData {
   quality: QualityData[];
   alternative_fuels: AlternativeFuelsData[];
   utilities: UtilitiesData[];
+  recommendations?: AIRecommendation[]; // Added for WebSocket integration
   created_at: string;
 }
 
 export interface PlantReport {
   generated_at: string;
   report: {
-    overview: any;
-    efficiency_analysis: any;
-    recommendations: any;
-    kpi_summary: any;
+    plant_efficiency_score: number;
+    chemistry_analysis: {
+      lsf: {
+        value: number;
+        status: string;
+        target: string;
+      };
+      silica_modulus: {
+        value: number;
+        status: string;
+        target: string;
+      };
+      alumina_modulus: {
+        value: number;
+        status: string;
+        target: string;
+      };
+      c3s: {
+        value: number;
+        status: string;
+        target: string;
+      };
+      recommendations: string[];
+    };
+    grinding_efficiency: {
+      specific_energy_consumption: {
+        value: number;
+        unit: string;
+        status: string;
+      };
+      target_sec: string;
+      recommendations: string[];
+      optimization_potential: number;
+    };
+    fuel_optimization: {
+      current_tsr: number;
+      target_tsr: number;
+      recommended_coal_rate: number;
+      recommended_alt_fuel_rate: number;
+      co2_reduction_kg_h: number;
+      feasibility: string;
+    };
+    energy_savings: {
+      energy_saved_kwh: number;
+      savings_percentage: number;
+      cost_saved_usd: number;
+      co2_reduced_kg: number;
+    };
+    recommendations: Array<{
+      priority: string;
+      area: string;
+      action: string;
+      impact: string;
+      estimated_savings: string;
+    }>;
+    business_impact: {
+      estimated_annual_savings: number;
+      co2_reduction_annual: number;
+      efficiency_improvement_pct: number;
+    };
   };
 }
 

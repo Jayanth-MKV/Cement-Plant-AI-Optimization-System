@@ -18,25 +18,21 @@ export function QualityControlModule() {
   // WebSocket connection for real-time updates
   const { 
     isConnected: wsConnected, 
-    error: wsError 
+    error: wsError,
+    lastMessage
   } = useWebSocket('plant-data');
 
-  // Load initial data from backend
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Load quality control data
         const response = await apiService.getQualityData();
         setQualityData(response.data || []);
-
         setLastUpdate(new Date());
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load quality control data';
-        setError(errorMessage);
-        console.error('❌ Quality Control Module Error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load quality control data');
       } finally {
         setLoading(false);
       }
@@ -44,6 +40,15 @@ export function QualityControlModule() {
 
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (lastMessage && lastMessage.data?.quality) {
+      setQualityData(lastMessage.data.quality);
+      setLastUpdate(new Date());
+      setError(null);
+      setLoading(false);
+    }
+  }, [lastMessage]);
 
   // Calculate KPIs from real data
   const kpis = React.useMemo(() => {

@@ -28,7 +28,7 @@ export function KPICard({
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon && <div className="h-4 w-4 text-muted-foreground">{icon}</div>}
       </CardHeader>
-      <CardContent className="h-[calc(100%-5rem)] flex flex-col">
+      <CardContent className="h-full flex flex-col">
         <div className="text-2xl font-bold">{value}</div>
         {change && (
           <p className={cn(

@@ -13,18 +13,43 @@ import type {
 } from '@/types/api';
 
 export interface WebSocketMessage {
-  type: 'initial' | 'update' | 'alert' | 'welcome' | 'error';
+  type: 'initial' | 'update' | 'plant_update' | 'alert' | 'welcome' | 'error';
   data?: any;
   message?: string;
   timestamp?: string;
+  created_at?: string;
 }
 
 export interface PlantDataMessage extends WebSocketMessage {
-  type: 'initial' | 'update';
+  type: 'initial' | 'update' | 'plant_update';
   data: {
-    grinding?: any;
-    kiln?: any;
-    raw_material?: any;
+    grinding?: {
+      id: number;
+      created_at: string;
+      mill_id: number;
+      mill_type: string;
+      total_feed_rate_tph: number;
+      power_consumption_kw: number;
+      // ... other grinding fields
+    };
+    kiln?: {
+      id: number;
+      created_at: string;
+      kiln_id: number;
+      burning_zone_temp_c: number;
+      fuel_rate_tph: number;
+      coal_rate_tph: number;
+      alt_fuel_rate_tph: number;
+      // ... other kiln fields
+    };
+    raw_material?: {
+      id: number;
+      created_at: string;
+      material_type: string;
+      feed_rate_tph: number;
+      moisture_pct: number;
+      // ... other raw material fields
+    };
     recommendations?: AIRecommendation[];
   };
 }
@@ -79,7 +104,62 @@ class WebSocketService {
         this.ws.onmessage = (event) => {
           try {
             const message: WebSocketMessage = JSON.parse(event.data);
+            
+            // Enhanced logging for WebSocket data
             console.log('📨 WebSocket message received:', message);
+            
+            if (message.data) {
+              console.group('🔍 WebSocket Data Structure Analysis');
+              console.log('Message Type:', message.type);
+              console.log('Data Keys:', Object.keys(message.data));
+              
+              if (message.data.grinding) {
+                console.log('🔧 Grinding Data:', message.data.grinding);
+                console.log('Grinding Keys:', Object.keys(message.data.grinding));
+              }
+              
+              if (message.data.kiln) {
+                console.log('🔥 Kiln Data:', message.data.kiln);
+                console.log('Kiln Keys:', Object.keys(message.data.kiln));
+              }
+              
+              if (message.data.raw_material) {
+                console.log('🗿 Raw Material Data:', message.data.raw_material);
+                console.log('Raw Material Keys:', Object.keys(message.data.raw_material));
+              }
+              
+              if (message.data.recommendations) {
+                console.log('🤖 Recommendations Data:', message.data.recommendations);
+                console.log('Recommendations Count:', message.data.recommendations.length);
+                if (message.data.recommendations.length > 0) {
+                  console.log('First Recommendation Keys:', Object.keys(message.data.recommendations[0]));
+                }
+              } else if (message.type === 'initial') {
+                console.log('❌ No recommendations data in initial WebSocket message');
+              }
+              
+              // Check for utilities, quality, alternative_fuels (only log missing for initial messages)
+              if (message.data.utilities) {
+                console.log('⚡ Utilities Data:', message.data.utilities);
+              } else if (message.type === 'initial') {
+                console.log('❌ No utilities data in WebSocket (expected - API only)');
+              }
+              
+              if (message.data.quality) {
+                console.log('🔬 Quality Data:', message.data.quality);
+              } else if (message.type === 'initial') {
+                console.log('❌ No quality data in WebSocket (expected - API only)');
+              }
+              
+              if (message.data.alternative_fuels) {
+                console.log('⛽ Alternative Fuels Data:', message.data.alternative_fuels);
+              } else if (message.type === 'initial') {
+                console.log('❌ No alternative fuels data in WebSocket (expected - API only)');
+              }
+              
+              console.groupEnd();
+            }
+            
             this.notifyEventHandlers(message);
           } catch (error) {
             console.error('❌ Error parsing WebSocket message:', error);

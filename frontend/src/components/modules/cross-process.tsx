@@ -9,6 +9,7 @@ import { Timestamp } from '@/components/timestamp';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts';
 import { CHART_COLORS } from '@/constants';
 import { apiService } from '@/services/api';
+import { useWebSocket } from '@/services/websocket';
 import { CombinedPlantData } from '@/types/api';
 
 interface CrossProcessMetrics {
@@ -24,6 +25,12 @@ export function CrossProcessModule() {
   const [error, setError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
 
+  const { 
+    isConnected: wsConnected, 
+    error: wsError,
+    lastMessage
+  } = useWebSocket('plant-data');
+
   const fetchPlantData = async () => {
     try {
       setIsLoading(true);
@@ -34,7 +41,6 @@ export function CrossProcessModule() {
       setPlantData(response.data || null);
       setBackendStatus('connected');
     } catch (err) {
-      console.error('Failed to fetch plant data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load plant data');
       setBackendStatus('disconnected');
     } finally {
@@ -45,6 +51,26 @@ export function CrossProcessModule() {
   useEffect(() => {
     fetchPlantData();
   }, []);
+
+  useEffect(() => {
+    if (lastMessage && lastMessage.data) {
+      const combinedData: CombinedPlantData = {
+        plant_overview: lastMessage.data.plant_overview || null,
+        grinding: lastMessage.data.grinding ? [lastMessage.data.grinding] : [],
+        kiln: lastMessage.data.kiln ? [lastMessage.data.kiln] : [],
+        raw_material: lastMessage.data.raw_material ? [lastMessage.data.raw_material] : [],
+        utilities: lastMessage.data.utilities || [],
+        quality: lastMessage.data.quality || [],
+        alternative_fuels: lastMessage.data.alternative_fuels || [],
+        recommendations: lastMessage.data.recommendations || [],
+        created_at: new Date().toISOString()
+      };
+      setPlantData(combinedData);
+      setBackendStatus('connected');
+      setError(null);
+      setIsLoading(false);
+    }
+  }, [lastMessage]);
 
   const calculateMetrics = (data: CombinedPlantData | null): CrossProcessMetrics => {
     if (!data) {
@@ -58,19 +84,19 @@ export function CrossProcessModule() {
 
     // Calculate overall efficiency from all processes
     const rawMaterialEfficiency = data.raw_material.length > 0 ? 
-      data.raw_material.reduce((sum, item) => sum + (item.feed_rate_tph || 80), 0) / data.raw_material.length : 80;
+      data.raw_material.reduce((sum, item) => sum + (item.feed_rate_tph || 0), 0) / data.raw_material.length : 0;
     const kilnEfficiency = data.kiln.length > 0 ?
-      data.kiln.reduce((sum, item) => sum + Math.min(100, 100 - Math.abs(item.burning_zone_temp_c - 1450) / 10), 0) / data.kiln.length : 85;
+      data.kiln.reduce((sum, item) => sum + Math.min(100, 100 - Math.abs(item.burning_zone_temp_c - 1450) / 10), 0) / data.kiln.length : 0;
     const qualityEfficiency = data.quality.length > 0 ?
-      data.quality.reduce((sum, item) => sum + (item.compressive_strength_28d_mpa ? (item.compressive_strength_28d_mpa / 50) * 100 : 90), 0) / data.quality.length : 90;
+      data.quality.reduce((sum, item) => sum + (item.compressive_strength_28d_mpa ? (item.compressive_strength_28d_mpa / 50) * 100 : 0), 0) / data.quality.length : 0;
     const utilityEfficiency = data.utilities.length > 0 ?
-      data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / data.utilities.length : 80;
+      data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 0), 0) / data.utilities.length : 0;
 
     const overallEfficiency = (rawMaterialEfficiency + kilnEfficiency + qualityEfficiency + utilityEfficiency) / 4;
 
     // Calculate energy optimization potential
     const totalPowerConsumption = data.utilities.reduce((sum, item) => sum + item.power_consumption_kw, 0);
-    const avgEfficiency = data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / data.utilities.length || 80;
+    const avgEfficiency = data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 0), 0) / data.utilities.length || 0;
     const energyOptimization = Math.max(0, (100 - avgEfficiency) / 8); // Convert efficiency gap to optimization percentage
 
     return {
@@ -102,15 +128,15 @@ export function CrossProcessModule() {
     }
 
     const rawMaterialEff = data.raw_material.length > 0 ? 
-      data.raw_material.reduce((sum, item) => sum + (item.feed_rate_tph || 80), 0) / data.raw_material.length : 80;
+      data.raw_material.reduce((sum, item) => sum + (item.feed_rate_tph || 0), 0) / data.raw_material.length : 0;
     const kilnEff = data.kiln.length > 0 ?
-      data.kiln.reduce((sum, item) => sum + Math.min(100, 100 - Math.abs(item.burning_zone_temp_c - 1450) / 10), 0) / data.kiln.length : 85;
+      data.kiln.reduce((sum, item) => sum + Math.min(100, 100 - Math.abs(item.burning_zone_temp_c - 1450) / 10), 0) / data.kiln.length : 0;
     const qualityEff = data.quality.length > 0 ?
-      data.quality.reduce((sum, item) => sum + (item.compressive_strength_28d_mpa ? (item.compressive_strength_28d_mpa / 50) * 100 : 90), 0) / data.quality.length : 90;
+      data.quality.reduce((sum, item) => sum + (item.compressive_strength_28d_mpa ? (item.compressive_strength_28d_mpa / 50) * 100 : 0), 0) / data.quality.length : 0;
     const fuelEff = data.alternative_fuels.length > 0 ?
-      data.alternative_fuels.reduce((sum, item) => sum + (item.thermal_substitution_pct || 20), 0) / data.alternative_fuels.length : 75;
+      data.alternative_fuels.reduce((sum, item) => sum + (item.thermal_substitution_pct || 0), 0) / data.alternative_fuels.length : 0;
     const utilityEff = data.utilities.length > 0 ?
-      data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / data.utilities.length : 80;
+      data.utilities.reduce((sum, item) => sum + (item.efficiency_pct || 0), 0) / data.utilities.length : 0;
 
     return [
       { process: 'Raw Materials', current: Math.min(100, rawMaterialEff), target: Math.min(100, rawMaterialEff + 8), improvement: Math.min(20, 100 - rawMaterialEff) },
@@ -138,7 +164,7 @@ export function CrossProcessModule() {
 
     return Object.entries(grouped).slice(0, 4).map(([type, items]) => {
       const totalConsumption = items.reduce((sum, item) => sum + item.power_consumption_kw, 0) / 10; // Scale down
-      const avgEfficiency = items.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / items.length;
+      const avgEfficiency = items.reduce((sum, item) => sum + (item.efficiency_pct || 0), 0) / items.length;
       const optimized = totalConsumption * (avgEfficiency / 100);
       const savings = ((totalConsumption - optimized) / totalConsumption) * 100;
 

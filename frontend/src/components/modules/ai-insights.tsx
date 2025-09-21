@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { RefreshCw } from 'lucide-react';
 import { apiService } from '@/services/api';
+import { useWebSocket } from '@/services/websocket';
 import { AIRecommendation } from '@/types/api';
 
 export function AIInsightsModule() {
@@ -13,6 +14,13 @@ export function AIInsightsModule() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
+
+  // WebSocket connection for real-time recommendations
+  const { 
+    isConnected: wsConnected, 
+    error: wsError,
+    lastMessage
+  } = useWebSocket('plant-data'); // Use plant-data since recommendations come with initial data
 
   const fetchRecommendations = async () => {
     try {
@@ -35,6 +43,20 @@ export function AIInsightsModule() {
   useEffect(() => {
     fetchRecommendations();
   }, []);
+
+  useEffect(() => {
+    if (lastMessage && lastMessage.data?.recommendations) {
+      setRecommendations(lastMessage.data.recommendations);
+      setBackendStatus('connected');
+      setError(null);
+      setIsLoading(false);
+      
+      // Update recommendations with fresh WebSocket data
+      setRecommendations(lastMessage.data.recommendations);
+      setBackendStatus('connected');
+      setError(null); // Clear any previous errors
+    }
+  }, [lastMessage]);
 
   const categorizeRecommendations = (recommendations: AIRecommendation[]) => {
     const immediateActions = recommendations.filter(r => r.priority_level >= 8);
@@ -97,47 +119,12 @@ export function AIInsightsModule() {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div>
+  
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Immediate Actions
-              <Badge variant="secondary">{immediateActions.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {immediateActions.map((action, index) => (
-                <div key={index} className="text-sm p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
-                  {action.description}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Predictive Alerts
-              <Badge variant="destructive">{predictiveAlerts.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {predictiveAlerts.map((alert, index) => (
-                <div key={index} className="text-sm p-3 bg-yellow-50 dark:bg-yellow-950 rounded-md">
-                  {alert.description}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Optimization Opportunities
               <Badge variant="outline">{optimizationOpportunities.length}</Badge>
             </CardTitle>
           </CardHeader>

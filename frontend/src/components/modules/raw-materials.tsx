@@ -19,7 +19,8 @@ export function RawMaterialsModule() {
   // WebSocket connection for real-time updates
   const { 
     isConnected: wsConnected, 
-    error: wsError 
+    error: wsError,
+    lastMessage
   } = useWebSocket('plant-data');
 
   // Control states for sliders
@@ -50,9 +51,7 @@ export function RawMaterialsModule() {
 
         setLastUpdate(new Date());
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load raw material data';
-        setError(errorMessage);
-        console.error('❌ Raw Materials Module Error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load raw material data');
       } finally {
         setLoading(false);
       }
@@ -60,6 +59,26 @@ export function RawMaterialsModule() {
 
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (lastMessage && lastMessage.data?.raw_material) {
+      const newRawMaterial = lastMessage.data.raw_material;
+      setRawMaterialData(prevData => {
+        const filteredPrevData = prevData.filter(item => item.id !== newRawMaterial.id);
+        return [newRawMaterial, ...filteredPrevData];
+      });
+      
+      const materialType = newRawMaterial.material_type?.toLowerCase();
+      if (materialType?.includes('limestone')) {
+        setLimestoneRate([newRawMaterial.feed_rate_tph || 0]);
+      } else if (materialType?.includes('clay')) {
+        setClayRate([newRawMaterial.feed_rate_tph || 0]);
+      }
+      
+      setLastUpdate(new Date());
+      setError(null); // Clear any previous errors
+    }
+  }, [lastMessage]);
 
   // Calculate current feed rates from database
   const getCurrentFeedRates = () => {

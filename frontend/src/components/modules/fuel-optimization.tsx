@@ -17,34 +17,21 @@ export function FuelOptimizationModule() {
   // WebSocket connection for real-time updates
   const { 
     isConnected: wsConnected, 
-    error: wsError 
+    error: wsError,
+    lastMessage
   } = useWebSocket('plant-data');
 
-  // Load initial data from backend
   useEffect(() => {
     const loadData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Load alternative fuels data
         const response = await apiService.getAlternativeFuelsData();
         setFuelData(response.data || []);
-
-        // Load fuel optimization results if available
-        try {
-          // Note: Optimization endpoint may not be implemented yet
-          // const optimization = await apiService.optimizeFuel();
-          // setOptimizationResult(optimization);
-        } catch (optError) {
-          console.warn('Fuel optimization not available:', optError);
-        }
-
         setLastUpdate(new Date());
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load fuel data';
-        setError(errorMessage);
-        console.error('❌ Fuel Optimization Module Error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load fuel data');
       } finally {
         setLoading(false);
       }
@@ -52,6 +39,15 @@ export function FuelOptimizationModule() {
 
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (lastMessage && lastMessage.data?.alternative_fuels) {
+      setFuelData(lastMessage.data.alternative_fuels);
+      setLastUpdate(new Date());
+      setError(null);
+      setLoading(false);
+    }
+  }, [lastMessage]);
 
   // Calculate KPIs from real data
   const kpis = React.useMemo(() => {

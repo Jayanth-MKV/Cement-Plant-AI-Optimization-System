@@ -31,11 +31,11 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
     label: 'Cross-Process',
     icon: '🔗'
   },
-  {
-    id: 'utilities',
-    label: 'Utilities',
-    icon: '⚙️'
-  },
+  // {
+  //   id: 'utilities',
+  //   label: 'Utilities',
+  //   icon: '⚙️'
+  // },
   {
     id: 'insights',
     label: 'AI Insights',

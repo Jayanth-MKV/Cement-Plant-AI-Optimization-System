@@ -9,6 +9,7 @@ import { Timestamp } from '@/components/timestamp';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
 import { CHART_COLORS } from '@/constants';
 import { apiService } from '@/services/api';
+import { useWebSocket } from '@/services/websocket';
 import { UtilitiesData } from '@/types/api';
 
 interface UtilityMetrics {
@@ -23,6 +24,12 @@ export function UtilitiesModule() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connecting');
+
+  const { 
+    isConnected: wsConnected, 
+    error: wsError,
+    lastMessage
+  } = useWebSocket('plant-data');
 
   const fetchUtilitiesData = async () => {
     try {
@@ -46,6 +53,15 @@ export function UtilitiesModule() {
     fetchUtilitiesData();
   }, []);
 
+  useEffect(() => {
+    if (lastMessage && lastMessage.data?.utilities) {
+      setUtilitiesData(lastMessage.data.utilities);
+      setBackendStatus('connected');
+      setError(null);
+      setIsLoading(false);
+    }
+  }, [lastMessage]);
+
   const calculateMetrics = (data: UtilitiesData[]): UtilityMetrics => {
     if (!data.length) {
       return {
@@ -63,7 +79,7 @@ export function UtilitiesModule() {
       : 0;
 
     // Calculate savings based on efficiency improvements
-    const avgEfficiency = data.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / data.length;
+    const avgEfficiency = data.reduce((sum, item) => sum + (item.efficiency_pct || 0), 0) / data.length;
     const potentialSavings = Math.max(0, (avgEfficiency - 80) / 5); // 5% efficiency = 1% savings
 
     return {
@@ -94,7 +110,7 @@ export function UtilitiesModule() {
 
     return Object.entries(grouped).map(([type, items]) => {
       const totalConsumption = items.reduce((sum, item) => sum + item.power_consumption_kw, 0) / 100; // Scale down
-      const avgEfficiency = items.reduce((sum, item) => sum + (item.efficiency_pct || 80), 0) / items.length;
+      const avgEfficiency = items.reduce((sum, item) => sum + (item.efficiency_pct || 0), 0) / items.length;
       const optimized = totalConsumption * (0.8 + (avgEfficiency - 80) / 100); // Better efficiency = more optimization
 
       return {
@@ -119,13 +135,13 @@ export function UtilitiesModule() {
 
     return data.slice(0, 5).map(item => {
       const hoursRun = item.operating_hours;
-      const efficiency = item.efficiency_pct || 80;
+      const efficiency = item.efficiency_pct || 0;
       const riskLevel = Math.min(100, Math.max(0, 100 - efficiency + (hoursRun / 100)));
       
       const status = riskLevel > 70 ? 'Critical' : riskLevel > 40 ? 'Warning' : 'Good';
-      const nextMaintenance = riskLevel > 70 ? `${Math.floor(Math.random() * 12) + 1} hours` :
-                             riskLevel > 40 ? `${Math.floor(Math.random() * 200) + 50} hours` :
-                             `${Math.floor(Math.random() * 500) + 300} hours`;
+      const nextMaintenance = riskLevel > 70 ? `${Math.floor(hoursRun / 100) + 1} hours` :
+                             riskLevel > 40 ? `${Math.floor(hoursRun / 10) + 50} hours` :
+                             `${Math.floor(hoursRun / 5) + 300} hours`;
 
       return {
         equipment: item.equipment_id,
@@ -137,7 +153,16 @@ export function UtilitiesModule() {
   };
 
   const getEfficiencyTrendData = () => {
-    return [];
+    if (!utilitiesData.length) {
+      return [];
+    }
+
+    // Generate efficiency trend from actual utilities data
+    return utilitiesData.slice(0, 8).map((item, index) => ({
+      time: `${index * 3}:00`,
+      conveyor: item.efficiency_pct || 0,
+      loading: Math.min(item.operating_hours / 100, 60) // Convert operating hours to loading time
+    }));
   };
 
   const metrics = calculateMetrics(utilitiesData);
