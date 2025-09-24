@@ -54,7 +54,7 @@ Manual (without script):
 cd server
 uv run main.py              # API
 uv run postgres-mcp --sse-port 8080 --transport sse --access-mode unrestricted <DATABASE_URI>
-cd cement_agent && uv run langgraph dev  # Agent dev server (expects MCP already running)
+cd cement_agent && uv run langgraph dev --allow-blocking  # Agent dev server (expects MCP already running)
 ```
 
 Access:
